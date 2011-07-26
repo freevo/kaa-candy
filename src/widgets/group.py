@@ -5,8 +5,7 @@ import backend
 
 class BackendCls(widget.Widget.BackendCls):
     
-    def __init__(self):
-        super(BackendCls, self).__init__()
+    def create(self):
         self._obj = backend.Group()
         self._obj.show()
         
@@ -27,8 +26,8 @@ class Group(widget.Widget):
             self.children.append(widget)
             widget.parent = self
 
-    def _backend_sync(self, tasks):
-        super(Group, self)._backend_sync(tasks)
+    def _candy_sync(self, tasks):
+        super(Group, self)._candy_sync(tasks)
         for child in self.children:
-            child._backend_sync(tasks)
+            child._candy_sync(tasks)
         # TODO: check for dirty

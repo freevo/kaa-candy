@@ -1,5 +1,7 @@
+import os
 import time
 import sys
+import fcntl
 import subprocess
 
 import kaa
@@ -40,7 +42,10 @@ class _Stage(object):
     def _stage_sync(self, event):
         while self._clutter_queue:
             func, args, kwargs = self._clutter_queue.pop(0)
-            func(*args, **kwargs)
+            try:
+                func(*args, **kwargs)
+            except Exception, e:
+                print e
         event.set()
         return False
         
@@ -52,19 +57,19 @@ class _Stage(object):
                 self._clutter_call(self._stage_create, t[1], self._widgets[t[2]])
             if t[0] == 'add':
                 self._widgets[t[2]] = t[1]()
+                self._clutter_call(self._widgets[t[2]].create)
             if t[0] == 'reparent':
-                widget = self._widgets[t[1]]
-                if widget.parent:
-                    widget.parent._obj.remove(widget._obj)
-                widget.parent = self._widgets[t[2]]
-                widget.parent._obj.add(widget._obj)
+                self._clutter_call(self._widgets[t[1]].reparent, self._widgets[t[2]])
             if t[0] == 'modify':
                 w = self._widgets[t[1]]
                 for a, v in t[2].items():
                     setattr(w, a, v)
                 w._candy_modified = t[2]
-                if w._candy_sync():
-                    self._clutter_call(w._clutter_sync)
+                try:
+                    w.prepare()
+                except Exception, e:
+                    print e
+                self._clutter_call(w.update)
         event = threading.Event()
         gobject.idle_add(self._stage_sync, event)
         event.wait()
@@ -74,6 +79,7 @@ class Stage(object):
 
     def __init__(self, size, name):
         args = [ 'python', __file__, name ]
+        self._candy_dirty = True
         self.server = subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr)
         retry = 50
         while True:
@@ -88,12 +94,34 @@ class Stage(object):
                 time.sleep(0.1)
         self.size = size
         self.group = Group()
+        self.group._candy_parent_obj = self
+        # We need the render pipe, the 'step' signal is not enough. It
+        # is not triggered between timer and select and a change done
+        # in a timer may get lost.
+        self._render_pipe = os.pipe()
+        fcntl.fcntl(self._render_pipe[0], fcntl.F_SETFL, os.O_NONBLOCK)
+        fcntl.fcntl(self._render_pipe[1], fcntl.F_SETFL, os.O_NONBLOCK)
+        kaa.IOMonitor(self.sync).register(self._render_pipe[0])
+        os.write(self._render_pipe[1], '1')
         self.initialized = False
 
     def add(self, widget):
         self.group.add(widget)
 
+    def _candy_queue_sync(self):
+        """
+        Queue sync
+        """
+        self._candy_dirty = True
+        os.write(self._render_pipe[1], '1')
+
     def sync(self):
+        # read the socket to handle the sync
+        try:
+            os.read(self._render_pipe[0], 1)
+        except OSError:
+            pass
+        self._candy_dirty = False
         tasks = []
         while _candy_new:
             widget = _candy_new.pop(0)
@@ -104,8 +132,9 @@ class Stage(object):
         while _candy_reparent:
             widget = _candy_reparent.pop(0)
             tasks.append(('reparent', widget._candy_id, widget.parent._candy_id))
-        self.group._backend_sync(tasks)
-        self.ipc.rpc('sync', tasks)
+        self.group._candy_sync(tasks)
+        if tasks:
+            self.ipc.rpc('sync', tasks)
 
 
 if __name__ == '__main__':

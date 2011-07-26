@@ -5,8 +5,7 @@ import backend
 
 class BackendCls(widget.Widget.BackendCls):
     
-    def __init__(self):
-        super(BackendCls, self).__init__()
+    def create(self):
         self._obj = backend.Rectangle()
         self._obj.set_color(backend.Color(60, 60, 0, 0xff))
         self._obj.set_size(60, 60)

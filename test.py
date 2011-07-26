@@ -10,15 +10,12 @@ def main():
     import stage
 
     stage = stage.Stage((800,600), 'candy')
-    yield kaa.NotFinished
-
     w = widgets.Rectangle((40, 40))
     stage.add(w)
-    stage.sync()
+    yield kaa.NotFinished
     w.x = 2
-    stage.sync()
-    stage.sync()
-    print 'client running'
+    yield kaa.NotFinished
+    yield kaa.NotFinished
 
 main()
 kaa.main.run()
