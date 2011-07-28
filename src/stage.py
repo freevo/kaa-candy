@@ -12,6 +12,7 @@ import gobject
 
 from widgets import Group
 from widgets.widget import _candy_new, _candy_reparent
+import candyxml
 
 class _Stage(object):
 
@@ -31,13 +32,17 @@ class _Stage(object):
 
     def _clutter_call(self, func, *args, **kwargs):
         self._clutter_queue.append((func, args, kwargs))
-        
+
     def _stage_create(self, size, group):
+        self.group = group
         self._obj = backend.Stage()
         self._obj.set_size(*size)
         self._obj.set_color(backend.Color(0, 0, 0, 0xff))
         self._obj.add(group._obj)
         self._obj.show()
+
+    def _stage_scale(self, factor):
+        self.group._obj.set_scale(*factor)
 
     def _stage_sync(self, event):
         while self._clutter_queue:
@@ -48,13 +53,15 @@ class _Stage(object):
                 print e
         event.set()
         return False
-        
+
     @kaa.rpc.expose()
     def sync(self, tasks):
         for t in tasks:
             print t
             if t[0] == 'stage':
                 self._clutter_call(self._stage_create, t[1], self._widgets[t[2]])
+            if t[0] == 'scale':
+                self._clutter_call(self._stage_scale, t[1])
             if t[0] == 'add':
                 self._widgets[t[2]] = t[1]()
                 self._clutter_call(self._widgets[t[2]].create)
@@ -104,6 +111,7 @@ class Stage(object):
         kaa.IOMonitor(self.sync).register(self._render_pipe[0])
         os.write(self._render_pipe[1], '1')
         self.initialized = False
+        self.scale = None
 
     def add(self, widget):
         self.group.add(widget)
@@ -129,12 +137,30 @@ class Stage(object):
         if not self.initialized:
             self.initialized = True
             tasks.append(('stage', self.size, self.group._candy_id))
+        if self.scale:
+            tasks.append(('scale', self.scale))
+            self.scale = None
         while _candy_reparent:
             widget = _candy_reparent.pop(0)
             tasks.append(('reparent', widget._candy_id, widget.parent._candy_id))
         self.group._candy_sync(tasks)
         if tasks:
             self.ipc.rpc('sync', tasks)
+
+    def set_content_geometry(self, size):
+        if isinstance(size, (str, unicode)):
+            size = int(size.split('x')[0]), int(size.split('x')[1])
+        self._candy_dirty = True
+        self.scale = (float(self.size[0]) / size[0], float(self.size[1]) / size[1])
+
+    def candyxml(self, data):
+        """
+        Load a candyxml file based on the given screen resolution.
+
+        @param data: filename of the XML file to parse or XML data
+        @returns: root element attributes and dict of parsed elements
+        """
+        return candyxml.parse(data, self.size)
 
 
 if __name__ == '__main__':
