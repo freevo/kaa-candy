@@ -1,16 +1,9 @@
 __all__ = [ 'Group' ]
 
 import widget
-import backend
+from backend import Group as BackendCls
 
-from core import is_template
-
-class BackendCls(widget.Widget.BackendCls):
-
-    def create(self):
-        self._obj = backend.Group()
-        self._obj.show()
-
+from ..core import is_template
 
 class Group(widget.Widget):
     BackendCls = BackendCls

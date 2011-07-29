@@ -2,42 +2,15 @@
 __all__ = [ 'Widget' ]
 
 
-import candyxml
-from core import Modifier
+from .. import candyxml
+from ..core import Modifier
+from backend import Widget as BackendCls
 
 _candy_id = 0
 _candy_new = []
 _candy_reparent = []
 
 NOT_SET = object()
-
-class BackendCls(object):
-
-    _candy_modified = {}
-
-    def __init__(self):
-        self.parent = None
-
-    def prepare(self):
-        # kaa mainloop
-        pass
-
-    def create(self):
-        # clutter thread
-        pass
-
-    def reparent(self, parent):
-        # clutter thread
-        if self.parent:
-            self.parent._obj.remove(self._obj)
-        self.parent = parent
-        if self.parent:
-            self.parent._obj.add(self._obj)
-
-    def update(self):
-        # clutter thread
-        if 'x' in self._candy_modified or 'y' in self._candy_modified:
-            self._obj.set_position(self.x, self.y)
 
 class _dict(dict):
     """

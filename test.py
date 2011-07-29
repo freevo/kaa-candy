@@ -1,8 +1,7 @@
 import os
 import sys
 import kaa
-
-sys.path.append('src')
+import kaa.candy2
 
 xml = '''
 <candyxml geometry="800x600">
@@ -14,10 +13,7 @@ xml = '''
 
 @kaa.coroutine()
 def main():
-    import widgets
-    import stage
-
-    stage = stage.Stage((400,300), 'candy')
+    stage = kaa.candy2.Stage((400,300), 'candy')
     attr, candy = stage.candyxml(xml)
     if 'geometry' in attr:
         stage.set_content_geometry(attr['geometry'])
