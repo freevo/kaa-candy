@@ -4,7 +4,6 @@ __all__ = [ 'Widget' ]
 
 from .. import candyxml
 from ..core import Modifier
-from backend import Widget as BackendCls
 
 _candy_id = 0
 _candy_new = []
@@ -97,7 +96,7 @@ class Template(object):
 
 class Widget(object):
 
-    BackendCls = BackendCls
+    candy_backend = 'candy.Widget'
     attributes = [ 'x', 'y', 'width', 'height' ]
 
     _candy_dirty = True

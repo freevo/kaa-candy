@@ -2,6 +2,7 @@ import sys
 import os
 import threading
 import traceback
+import imp
 import gobject
 
 import kaa
@@ -17,6 +18,7 @@ class _Stage(object):
         self.ipc.register(self)
         self._clutter_queue = []
         self._widgets = {}
+        self._import('candy', os.path.dirname(__file__) + '/../widgets/backend')
         self.sync([])
 
     def _ipc_connected(self, client):
@@ -27,6 +29,11 @@ class _Stage(object):
 
     def _clutter_call(self, func, *args, **kwargs):
         self._clutter_queue.append((func, args, kwargs))
+
+    def _import(self, name, path):
+        path = os.path.abspath(path)
+        (file, filename, data) = imp.find_module(os.path.basename(path), [os.path.dirname(path)])
+        globals()[name] = imp.load_module(name, file, filename, data)
 
     def _stage_create(self, size, group):
         self.group = group
@@ -58,7 +65,7 @@ class _Stage(object):
             if t[0] == 'scale':
                 self._clutter_call(self._stage_scale, t[1])
             if t[0] == 'add':
-                self._widgets[t[2]] = t[1](clutter)
+                self._widgets[t[2]] = eval(t[1])(clutter)
                 self._clutter_call(self._widgets[t[2]].create)
             if t[0] == 'reparent':
                 self._clutter_call(self._widgets[t[1]].reparent, self._widgets[t[2]])

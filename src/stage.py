@@ -63,7 +63,7 @@ class Stage(object):
         tasks = []
         while _candy_new:
             widget = _candy_new.pop(0)
-            tasks.append(('add', widget.BackendCls, widget._candy_id))
+            tasks.append(('add', widget.candy_backend, widget._candy_id))
         if not self.initialized:
             self.initialized = True
             tasks.append(('stage', self.size, self.group._candy_id))

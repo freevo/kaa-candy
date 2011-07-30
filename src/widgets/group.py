@@ -1,12 +1,10 @@
 __all__ = [ 'Group' ]
 
 import widget
-from backend import Group as BackendCls
-
 from ..core import is_template
 
 class Group(widget.Widget):
-    BackendCls = BackendCls
+    candy_backend = 'candy.Group'
 
     candyxml_name = 'group'
     context_sensitive = True
