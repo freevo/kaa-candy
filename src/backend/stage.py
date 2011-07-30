@@ -30,7 +30,7 @@ class _Stage(object):
         self.ipc.register(self)
         self._clutter_queue = []
         self._widgets = {}
-        self._import('candy', os.path.dirname(__file__) + '/../widgets/backend')
+        self._import('candy', os.path.dirname(__file__) + '/widgets')
         self.sync([])
 
     def _ipc_connected(self, client):
