@@ -2,9 +2,8 @@ class Widget(object):
 
     _candy_modified = {}
 
-    def __init__(self, clutter):
+    def __init__(self):
         self.parent = None
-        self.clutter = clutter
 
     def prepare(self):
         # kaa mainloop

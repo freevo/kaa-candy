@@ -3,12 +3,24 @@ import os
 import threading
 import traceback
 import imp
+import __builtin__
 import gobject
 
 import kaa
 import kaa.rpc
 
 from wrapper import clutter
+
+class Modules(object):
+    clutter = clutter
+
+    def __call__(self, name):
+        return getattr(self, name)
+
+
+candy_module = Modules()
+
+__builtin__.candy_module = candy_module
 
 class _Stage(object):
 
@@ -33,7 +45,7 @@ class _Stage(object):
     def _import(self, name, path):
         path = os.path.abspath(path)
         (file, filename, data) = imp.find_module(os.path.basename(path), [os.path.dirname(path)])
-        globals()[name] = imp.load_module(name, file, filename, data)
+        setattr(candy_module, name, imp.load_module(name, file, filename, data))
 
     def _stage_create(self, size, group):
         self.group = group
@@ -65,7 +77,7 @@ class _Stage(object):
             if t[0] == 'scale':
                 self._clutter_call(self._stage_scale, t[1])
             if t[0] == 'add':
-                self._widgets[t[2]] = eval(t[1])(clutter)
+                self._widgets[t[2]] = eval('candy_module.' + t[1])()
                 self._clutter_call(self._widgets[t[2]].create)
             if t[0] == 'reparent':
                 self._clutter_call(self._widgets[t[1]].reparent, self._widgets[t[2]])
@@ -77,7 +89,7 @@ class _Stage(object):
                 try:
                     w.prepare()
                 except Exception, e:
-                    print e
+                    traceback.print_exc()
                 self._clutter_call(w.update)
         event = threading.Event()
         gobject.idle_add(self._stage_sync, event)
