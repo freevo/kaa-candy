@@ -167,7 +167,7 @@ class Widget(object):
             if old_value != new_value:
                 attributes[a] = new_value
                 self._candy_cache[a] = new_value
-        tasks.append(('modify', self._candy_id, attributes))
+        tasks.append(('modify', (self._candy_id, attributes)))
         self._candy_dirty = False
 
     @property

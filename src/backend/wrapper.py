@@ -1,8 +1,8 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# backend - Clutter handling and wrapper
+# wrapper - Clutter handling and wrapper
 # -----------------------------------------------------------------------------
-# $Id: __init__.py 4334 2010-08-15 20:57:35Z dmeyer $
+# $Id: $
 #
 # Access clutter functions and objects
 #
@@ -39,12 +39,19 @@
 #
 # -----------------------------------------------------------------------------
 
+__all__ = [ 'clutter' ]
+
+# python imports
 import logging
 import kaa
 
+# get logging object
 log = logging.getLogger('candy')
 
 class Wrapper(object):
+    """
+    Clutter wrapper class
+    """
 
     class Mainloop(object):
         """
@@ -77,8 +84,11 @@ class Wrapper(object):
             clutter.main_quit()
 
     def initialize(self):
-        # set generic mainloop and start the clutter thread
+        """
+        Set generic mainloop and start the clutter thread
+        """
         kaa.main.init('generic')
         kaa.gobject_set_threaded(self.Mainloop())
 
+# global clutter object
 clutter = Wrapper()

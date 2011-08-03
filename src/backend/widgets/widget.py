@@ -1,13 +1,11 @@
 class Widget(object):
 
-    _candy_modified = {}
-
+    # clutter object
     obj = None
+    # candy parent object
+    parent = None
 
-    def __init__(self):
-        self.parent = None
-
-    def prepare(self):
+    def prepare(self, modified):
         # kaa mainloop
         pass
 
@@ -31,8 +29,7 @@ class Widget(object):
         if self.parent:
             self.parent.obj.add(self.obj)
 
-    def update(self):
+    def update(self, modified):
         # clutter thread
-        if 'x' in self._candy_modified or 'y' in self._candy_modified:
+        if 'x' in modified or 'y' in modified:
             self.obj.set_position(self.x, self.y)
-

@@ -26,7 +26,7 @@ def main():
     container.x += 100
     yield kaa.NotFinished
     yield kaa.NotFinished
-    container.parent = None
+    #container.parent = None
     yield kaa.NotFinished
 
 def garbage_collect():

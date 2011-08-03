@@ -64,22 +64,22 @@ class Stage(object):
         while _candy_new:
             widget = _candy_new.pop(0)
             widget._candy_stage = self
-            tasks.append(('add', widget.candy_backend, widget._candy_id))
+            tasks.append(('add', (widget.candy_backend, widget._candy_id)))
         if not self.initialized:
             self.initialized = True
-            tasks.append(('stage', self.size, self.group._candy_id))
+            tasks.append(('stage', (self.size, self.group._candy_id)))
         if self.scale:
-            tasks.append(('scale', self.scale))
+            tasks.append(('scale', (self.scale,)))
             self.scale = None
         while _candy_reparent:
             widget = _candy_reparent.pop(0)
             if widget.parent:
-                tasks.append(('reparent', widget._candy_id, widget.parent._candy_id))
+                tasks.append(('reparent', (widget._candy_id, widget.parent._candy_id)))
             else:
-                tasks.append(('reparent', widget._candy_id, None))
+                tasks.append(('reparent', (widget._candy_id, None)))
         self.group._candy_sync(tasks)
         while _candy_delete:
-            tasks.append(('delete', _candy_delete.pop(0)))
+            tasks.append(('delete', (_candy_delete.pop(0),)))
         if tasks:
             self.ipc.rpc('sync', tasks)
 
