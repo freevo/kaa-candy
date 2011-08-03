@@ -80,7 +80,10 @@ class _Stage(object):
                 self._widgets[t[2]] = eval('candy_module.' + t[1])()
                 self._clutter_call(self._widgets[t[2]].create)
             if t[0] == 'reparent':
-                self._clutter_call(self._widgets[t[1]].reparent, self._widgets[t[2]])
+                if t[2]:
+                    self._clutter_call(self._widgets[t[1]].reparent, self._widgets[t[2]])
+                else:
+                    self._clutter_call(self._widgets[t[1]].reparent, None)
             if t[0] == 'modify':
                 w = self._widgets[t[1]]
                 for a, v in t[2].items():
@@ -91,6 +94,10 @@ class _Stage(object):
                 except Exception, e:
                     traceback.print_exc()
                 self._clutter_call(w.update)
+            if t[0] == 'delete':
+                self._clutter_call(self._widgets[t[1]].delete)
+                del self._widgets[t[1]]
+
         event = threading.Event()
         gobject.idle_add(self._stage_sync, event)
         event.wait()

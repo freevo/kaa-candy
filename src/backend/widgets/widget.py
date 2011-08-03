@@ -2,6 +2,8 @@ class Widget(object):
 
     _candy_modified = {}
 
+    obj = None
+
     def __init__(self):
         self.parent = None
 
@@ -12,6 +14,14 @@ class Widget(object):
     def create(self):
         # clutter thread
         pass
+
+    def delete(self):
+        # clutter thread
+        if not self.obj:
+            return
+        if self.parent and self.parent.obj:
+            self.parent.obj.remove(self.obj)
+        self.obj = None
 
     def reparent(self, parent):
         # clutter thread

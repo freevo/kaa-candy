@@ -1,4 +1,5 @@
 import os
+import gc
 import sys
 import kaa
 import kaa.candy2
@@ -25,6 +26,16 @@ def main():
     container.x += 100
     yield kaa.NotFinished
     yield kaa.NotFinished
+    container.parent = None
+    yield kaa.NotFinished
+
+def garbage_collect():
+    gc.collect()
+    for g in gc.garbage:
+        print 'Unable to free %s' % g
+
+# Set up garbage collector to be called every 5 seconds
+kaa.Timer(garbage_collect).start(1)
 
 main()
 kaa.main.run()

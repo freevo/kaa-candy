@@ -1,12 +1,15 @@
 
 __all__ = [ 'Widget' ]
 
+import kaa
+import kaa.weakref
 
 from .. import candyxml
 from ..core import Modifier
 
 _candy_id = 0
 _candy_new = []
+_candy_delete = []
 _candy_reparent = []
 
 NOT_SET = object()
@@ -102,6 +105,7 @@ class Widget(object):
     _candy_dirty = True
     _candy_parent_obj = None
     _candy_parent_id = None
+    _candy_stage = None
 
     class __metaclass__(type):
         def __new__(meta, name, bases, attrs):
@@ -138,6 +142,12 @@ class Widget(object):
         if attr in self.attributes and not self._candy_dirty:
             self._candy_queue_sync()
 
+
+    def __del__(self):
+        _candy_delete.append(self._candy_id)
+        if self._candy_stage and not self._candy_stage._candy_dirty:
+            self._candy_stage._candy_queue_sync()
+            
     def _candy_queue_sync(self):
         """
         Queue sync
@@ -168,8 +178,12 @@ class Widget(object):
     def parent(self, parent):
         if not self in _candy_reparent:
             self._candy_queue_sync()
-        self._candy_parent_obj = parent
+            if self._candy_parent_obj:
+                self._candy_parent_obj.children.remove(self)
+        self._candy_parent_obj = kaa.weakref.weakref(parent)
         if not self in _candy_reparent:
+            if parent:
+                parent.children.append(self)
             _candy_reparent.append(self)
             self._candy_queue_sync()
 

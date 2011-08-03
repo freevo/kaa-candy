@@ -18,20 +18,21 @@ class Group(widget.Widget):
                 widget = template(context)
             self.add(widget)
 
+    def __del__(self):
+        del self.children
+        super(Group, self).__del__()
+
     def add(self, *widgets):
         """
         Add widgets to the group.
         """
         for widget in widgets:
-            # TODO: that should happen in the next line
-            self.children.append(widget)
             widget.parent = self
 
     def _candy_sync(self, tasks):
         super(Group, self)._candy_sync(tasks)
         for child in self.children:
             child._candy_sync(tasks)
-        # TODO: check for dirty
 
     @classmethod
     def candyxml_parse(cls, element):

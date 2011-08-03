@@ -9,7 +9,7 @@ import kaa.rpc
 import threading
 
 from widgets import Group
-from widgets.widget import _candy_new, _candy_reparent
+from widgets.widget import _candy_new, _candy_reparent, _candy_delete
 import candyxml
 
 class Stage(object):
@@ -63,6 +63,7 @@ class Stage(object):
         tasks = []
         while _candy_new:
             widget = _candy_new.pop(0)
+            widget._candy_stage = self
             tasks.append(('add', widget.candy_backend, widget._candy_id))
         if not self.initialized:
             self.initialized = True
@@ -72,8 +73,13 @@ class Stage(object):
             self.scale = None
         while _candy_reparent:
             widget = _candy_reparent.pop(0)
-            tasks.append(('reparent', widget._candy_id, widget.parent._candy_id))
+            if widget.parent:
+                tasks.append(('reparent', widget._candy_id, widget.parent._candy_id))
+            else:
+                tasks.append(('reparent', widget._candy_id, None))
         self.group._candy_sync(tasks)
+        while _candy_delete:
+            tasks.append(('delete', _candy_delete.pop(0)))
         if tasks:
             self.ipc.rpc('sync', tasks)
 
