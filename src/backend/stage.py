@@ -32,6 +32,7 @@
 # python imports
 import sys
 import os
+import time
 import threading
 import traceback
 import imp
@@ -118,12 +119,14 @@ class _Stage(object):
         Sync the changes with the clutter objects
         Executed inside the clutter thread
         """
+        t0 = time.time()
         while self.queue:
             func = self.queue.pop(0)
             try:
                 func[0](*func[1:])
             except Exception, e:
                 traceback.print_exc()
+        print 'sync took %0.4f sec' % (time.time() - t0)
         event.set()
         return False
 
@@ -158,10 +161,11 @@ class _Stage(object):
             if cmd == 'delete':
                 self.queue.append((self.widgets[args[0]].delete,))
                 del self.widgets[args[0]]
-        # sync with the clutter thread
-        event = threading.Event()
-        gobject.idle_add(self.sync_clutter, event)
-        event.wait()
+        if self.queue:
+            # sync with the clutter thread
+            event = threading.Event()
+            gobject.idle_add(self.sync_clutter, event)
+            event.wait()
 
 
 if __name__ == '__main__':

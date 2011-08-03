@@ -33,3 +33,7 @@ class Widget(object):
         # clutter thread
         if 'x' in modified or 'y' in modified:
             self.obj.set_position(self.x, self.y)
+        if 'width' in modified and self.width:
+            self.obj.set_width(self.width)
+        if 'height' in modified and self.height:
+            self.obj.set_height(self.height)

@@ -6,7 +6,10 @@ class Rectangle(widget.Widget):
 
     def create(self):
         self.obj = clutter.Rectangle()
-        self.obj.set_color(clutter.Color(60, 60, 0, 0xff))
-        self.obj.set_size(self.width, self.height)
         self.obj.show()
+
+    def update(self, modified):
+        super(Rectangle, self).update(modified)
+        if 'color' in modified:
+            self.obj.set_color(clutter.Color(*self.color))
 

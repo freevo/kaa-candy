@@ -7,7 +7,7 @@ import kaa.candy2
 xml = '''
 <candyxml geometry="800x600">
     <group name="g1" x="10" y="10" width="600" height="580">
-        <rectangle width="30" height="30"/>
+        <rectangle width="30" height="30" color="0xffff00"/>
     </group>
 </candyxml>
 '''
@@ -21,10 +21,9 @@ def main():
 
     container = candy.group.g1()
     stage.add(container)
-
+    yield kaa.NotFinished
     yield kaa.NotFinished
     container.x += 100
-    yield kaa.NotFinished
     yield kaa.NotFinished
     #container.parent = None
     yield kaa.NotFinished
