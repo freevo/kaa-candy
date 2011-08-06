@@ -29,7 +29,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'parse', 'register', 'get_class' ]
+__all__ = [ 'Template', 'parse', 'register', 'get_class' ]
 
 # python imports
 import os
@@ -42,36 +42,87 @@ import core
 # get logging object
 log = logging.getLogger('kaa.candy')
 
+
+class Template(object):
+    """
+    Template to create a widget on demand. All XML parsers will create such an
+    object to parse everything at once.
+    """
+
+    #: class is a template class
+    __is_template__ = True
+
+    def __init__(self, cls, **kwargs):
+        """
+        Create a template for the given class
+
+        :param cls: widget class
+        :param kwargs: keyword arguments for cls.__init__
+        """
+        self._cls = cls
+        self._modifier = kwargs.pop('modifier', [])
+        self._kwargs = kwargs
+        self._properties = []
+        self.userdata = {}
+
+    def set_property(self, key, value):
+        """
+        Add property to be set after widget creation
+        """
+        self._properties.append((key, value))
+
+    def __call__(self, context=None, **kwargs):
+        """
+        Create the widget with the given context and override some
+        constructor arguments.
+
+        :param context: context to create the widget in
+        :returns: widget object
+        """
+        if context is not None:
+            context = Context(context)
+        args = self._kwargs.copy()
+        args.update(kwargs)
+        if self._cls.context_sensitive:
+            args['context'] = context
+        widget = self._cls(**args)
+        for key, value in self._properties:
+            setattr(widget, key, value)
+        return widget
+
+    @classmethod
+    def candyxml_get_class(cls, element):
+        """
+        Get the class for the candyxml element. This function may be overwritten
+        by inheriting classes and should not be called from outside such a class.
+        """
+        return get_class(element.node, element.style)
+
+    @classmethod
+    def candyxml_create(cls, element):
+        """
+        Parse the candyxml element for parameter and create a Template.
+        """
+        modifier = []
+        for subelement in element.get_children():
+            mod = core.Modifier.candyxml_create(subelement)
+            if mod is not None:
+                modifier.append(mod)
+                element.remove(subelement)
+        widget = cls.candyxml_get_class(element)
+        if widget is None:
+            log.error('undefined widget %s:%s', element.node, element.style)
+        kwargs = widget.candyxml_parse(element)
+        if modifier:
+            kwargs['modifier'] = modifier
+        template = cls(widget, **kwargs)
+        return template
+
+
 class ElementDict(dict):
 
     def __getattr__(self, attr):
         return self.get(attr)
-
-def convert_attributes(attrs):
-    """
-    Convert attributes from strings
-    """
-    calc_attrs = {}
-    for key, value in attrs.items():
-        if key in ('x', 'xpadding', 'y', 'ypadding'):
-            value = int(value)
-        elif key == 'width' and not value.endswith('%'):
-            x1 = int(attrs.get('x', 0))
-            x2 = int(attrs.get('x', 0)) + int(value)
-            value = x2 - x1
-        elif key == 'height' and not value.endswith('%'):
-            y1 = int(attrs.get('y', 0))
-            y2 = int(attrs.get('y', 0)) + int(value)
-            value = y2 - y1
-        elif key in ('radius', 'size', 'spacing'):
-            value = int(value)
-        elif key.find('color') != -1:
-            value = core.Color(value)
-        elif key.find('font') != -1:
-            value = core.Font(value)
-            value.size = int(value.size)
-        calc_attrs[str(key).replace('-', '_')] = value
-    return calc_attrs
 
 
 class Element(object):
@@ -83,7 +134,26 @@ class Element(object):
         self.node = node
         # note: circular reference
         self._parent = parent
-        self._attrs = convert_attributes(attrs)
+        self._attrs = {}
+        for key, value in attrs.items():
+            if key in ('x', 'xpadding', 'y', 'ypadding'):
+                value = int(value)
+            elif key == 'width' and not value.endswith('%'):
+                x1 = int(attrs.get('x', 0))
+                x2 = int(attrs.get('x', 0)) + int(value)
+                value = x2 - x1
+            elif key == 'height' and not value.endswith('%'):
+                y1 = int(attrs.get('y', 0))
+                y2 = int(attrs.get('y', 0)) + int(value)
+                value = y2 - y1
+            elif key in ('radius', 'size', 'spacing'):
+                value = int(value)
+            elif key.find('color') != -1:
+                value = core.Color(value)
+            elif key.find('font') != -1:
+                value = core.Font(value)
+                value.size = int(value.size)
+            self._attrs[str(key).replace('-', '_')] = value
         self._children = []
 
     def __iter__(self):

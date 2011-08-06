@@ -233,7 +233,6 @@ class Properties(dict, Modifier):
     """
     Properties class to apply the given properties to a widget. This is a
     dictionary for clutter functions to call after the widget is created.
-    It is used by candyxml and the animation submodule.
     """
 
     #: candyxml name
@@ -254,9 +253,9 @@ class Properties(dict, Modifier):
         """
         Parse the candyxml element and create a Properties object::
 
-          <widget_or_animation>
+          <widget>
             <properties key=value key=value>
-          </widget_or_animation>
+          </widget>
 
         Possible keys are C{opacity} (int), C{depth} (int),
         C{scale} (float,float), C{anchor_point} (float,float)

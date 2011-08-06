@@ -7,10 +7,7 @@ import kaa.weakref
 from .. import candyxml
 from ..core import Modifier
 
-_candy_id = 0
-_candy_new = []
-_candy_delete = []
-_candy_reparent = []
+next_candy_id = 1
 
 NOT_SET = object()
 
@@ -22,85 +19,15 @@ class _dict(dict):
         super(_dict, self).update(**kwargs)
         return self
 
-class Template(object):
-    """
-    Template to create a widget on demand. All XML parsers will create such an
-    object to parse everything at once.
-    """
-
-    #: class is a template class
-    __is_template__ = True
-
-    def __init__(self, cls, **kwargs):
-        """
-        Create a template for the given class
-
-        :param cls: widget class
-        :param kwargs: keyword arguments for cls.__init__
-        """
-        self._cls = cls
-        self._modifier = kwargs.pop('modifier', [])
-        self._kwargs = kwargs
-        self._properties = []
-        self.userdata = {}
-
-    def set_property(self, key, value):
-        """
-        Add property to be set after widget creation
-        """
-        self._properties.append((key, value))
-
-    def __call__(self, context=None, **kwargs):
-        """
-        Create the widget with the given context and override some
-        constructor arguments.
-
-        :param context: context to create the widget in
-        :returns: widget object
-        """
-        if context is not None:
-            context = Context(context)
-        args = self._kwargs.copy()
-        args.update(kwargs)
-        if self._cls.context_sensitive:
-            args['context'] = context
-        widget = self._cls(**args)
-        for key, value in self._properties:
-            setattr(widget, key, value)
-        return widget
-
-    @classmethod
-    def candyxml_get_class(cls, element):
-        """
-        Get the class for the candyxml element. This function may be overwritten
-        by inheriting classes and should not be called from outside such a class.
-        """
-        return candyxml.get_class(element.node, element.style)
-
-    @classmethod
-    def candyxml_create(cls, element):
-        """
-        Parse the candyxml element for parameter and create a Template.
-        """
-        modifier = []
-        for subelement in element.get_children():
-            mod = Modifier.candyxml_create(subelement)
-            if mod is not None:
-                modifier.append(mod)
-                element.remove(subelement)
-        widget = cls.candyxml_get_class(element)
-        if widget is None:
-            log.error('undefined widget %s:%s', element.node, element.style)
-        kwargs = widget.candyxml_parse(element)
-        if modifier:
-            kwargs['modifier'] = modifier
-        template = cls(widget, **kwargs)
-        return template
-
 class Widget(object):
 
     candy_backend = 'candy.Widget'
     attributes = [ 'x', 'y', 'width', 'height' ]
+
+    # internal class variables
+    _candy_sync_new = []
+    _candy_sync_delete = []
+    _candy_sync_reparent = []
 
     _candy_dirty = True
     _candy_parent_obj = None
@@ -115,7 +42,7 @@ class Widget(object):
             return cls
 
     #: template for object creation
-    __template__ = Template
+    __template__ = candyxml.Template
 
     #: set if the object reacts on context
     context_sensitive = False
@@ -126,28 +53,26 @@ class Widget(object):
     height = None
 
     def __init__(self, pos=None, size=None, context=None):
-        global _candy_id
-        self._candy_id = 0
+        global next_candy_id
         if pos is not None:
             self.x, self.y = pos
         if size is not None:
             self.width, self.height = size
-        _candy_id += 1
-        _candy_new.append(self)
+        Widget._candy_sync_new.append(self)
         self._candy_cache = {}
-        self._candy_id = _candy_id
+        self._candy_id = next_candy_id
+        next_candy_id += 1
 
     def __setattr__(self, attr, value):
         super(Widget, self).__setattr__(attr, value)
         if attr in self.attributes and not self._candy_dirty:
             self._candy_queue_sync()
 
-
     def __del__(self):
-        _candy_delete.append(self._candy_id)
+        Widget._candy_sync_delete.append(self._candy_id)
         if self._candy_stage and not self._candy_stage._candy_dirty:
             self._candy_stage._candy_queue_sync()
-            
+
     def _candy_queue_sync(self):
         """
         Queue sync
@@ -176,15 +101,15 @@ class Widget(object):
 
     @parent.setter
     def parent(self, parent):
-        if not self in _candy_reparent:
+        if not self in Widget._candy_sync_reparent:
             self._candy_queue_sync()
             if self._candy_parent_obj:
                 self._candy_parent_obj.children.remove(self)
         self._candy_parent_obj = kaa.weakref.weakref(parent)
-        if not self in _candy_reparent:
+        if not self in Widget._candy_sync_reparent:
             if parent:
                 parent.children.append(self)
-            _candy_reparent.append(self)
+            Widget._candy_sync_reparent.append(self)
             self._candy_queue_sync()
 
     @classmethod
