@@ -7,7 +7,8 @@ import kaa.candy2
 xml = '''
 <candyxml geometry="800x600">
     <group name="g1" x="10" y="10" width="600" height="580">
-        <rectangle width="30" height="30" color="0xffff00"/>
+        <rectangle width="100" height="100" color="0xffff00" radius="50"
+           border_size="5" border_color="0xffffff"/>
     </group>
 </candyxml>
 '''

@@ -1,6 +1,6 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# widget.py - base widgets class
+# image.py - image widgets
 # -----------------------------------------------------------------------------
 # $Id:$
 #
@@ -32,59 +32,29 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Widget' ]
+__all__ = [ 'CairoTexture' ]
 
-class Widget(object):
+import widget
 
-    # clutter object
-    obj = None
-    # candy parent object
-    parent = None
+clutter = candy_module('clutter')
 
-    def prepare(self, modified):
-        """
-        Prepare rendering
-        Executed in the kaa mainloop
-        """
-        pass
+class CairoTexture(widget.Widget):
+    """
+    Cairo based Texture widget.
+    """
 
     def create(self):
         """
         Create the clutter object
-        Executed in the clutter thread
         """
-        pass
-
-    def delete(self):
-        """
-        Delete the clutter object
-        Executed in the clutter thread
-        """
-        if not self.obj:
-            return
-        if self.parent and self.parent.obj:
-            self.parent.obj.remove(self.obj)
-        self.obj = None
-
-    def reparent(self, parent):
-        """
-        Reparent the clutter object
-        Executed in the clutter thread
-        """
-        if self.parent:
-            self.parent.obj.remove(self.obj)
-        self.parent = parent
-        if self.parent:
-            self.parent.obj.add(self.obj)
+        self.obj = clutter.CairoTexture(self.width, self.height)
+        self.obj.show()
 
     def update(self, modified):
         """
         Render the widget
-        Executed in the clutter thread
         """
-        if 'x' in modified or 'y' in modified:
-            self.obj.set_position(self.x, self.y)
-        if 'width' in modified and self.width:
-            self.obj.set_width(self.width)
-        if 'height' in modified and self.height:
-            self.obj.set_height(self.height)
+        super(CairoTexture, self).update(modified)
+        if ('width' in modified or 'height' in modified) and self.height and self.width:
+            self.obj.set_surface_size(self.width, self.height)
+        self.obj.clear()
