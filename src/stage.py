@@ -15,7 +15,7 @@ import candyxml
 class Stage(object):
 
     def __init__(self, size, name):
-        args = [ 'python', os.path.dirname(__file__) + '/backend/stage.py', name ]
+        args = [ 'python', os.path.dirname(__file__) + '/backend/main.py', name ]
         self._candy_dirty = True
         self.server = subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr)
         retry = 50

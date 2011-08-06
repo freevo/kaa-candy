@@ -34,10 +34,6 @@
 
 __all__ = []
 
-import sys
-if 'kaa.candy2' in sys.modules:
-    raise RuntimeError('importing the backend is forbidden for the client')
-
 import kaa.utils
 
 for name, module in kaa.utils.get_plugins(location=__file__).items():

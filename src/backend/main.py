@@ -1,6 +1,6 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# stage - Backend clutter stage and RPC server
+# main - Backend main process
 # -----------------------------------------------------------------------------
 # $Id: $
 #
@@ -61,7 +61,7 @@ candy_module = Modules()
 # expose candy_module as some sort of candy import
 __builtin__.candy_module = candy_module
 
-class _Stage(object):
+class Stage(object):
     """
     Backend stage class
     """
@@ -171,5 +171,5 @@ class _Stage(object):
 if __name__ == '__main__':
     # kaa.candy backend process
     clutter.initialize()
-    stage = _Stage(sys.argv[1])
+    stage = Stage(sys.argv[1])
     kaa.main.run()
