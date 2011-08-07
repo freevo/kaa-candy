@@ -17,10 +17,16 @@ class Group(widget.Widget):
                 template = widget
                 widget = template(context)
             self.add(widget)
+        self.__intrinsic_size = None
 
     def __del__(self):
         del self.children
         super(Group, self).__del__()
+
+    def __sync__(self, tasks):
+        super(Group, self).__sync__(tasks)
+        for child in self.children:
+            child.__sync__(tasks)
 
     def add(self, *widgets):
         """
@@ -29,10 +35,32 @@ class Group(widget.Widget):
         for widget in widgets:
             widget.parent = self
 
-    def _candy_sync(self, tasks):
-        super(Group, self)._candy_sync(tasks)
+    def calculate_variable_geometry(self, size):
+        """
+        Calculate variable geometry for given percentage values
+        """
+        super(Group, self).calculate_variable_geometry(size)
+        if not self._candy_geometry_dirty: # FIXME: that line is not correct!
+            return
+        size = self.width, self.height
+        children_width = children_height = 0
         for child in self.children:
-            child._candy_sync(tasks)
+            if child.passive:
+                continue
+            child.calculate_variable_geometry(size)
+            intrinsic_size = child.intrinsic_size
+            children_width = max(children_width, child.x + intrinsic_size[0])
+            children_height = max(children_height, child.y + intrinsic_size[1])
+        self.__intrinsic_size = children_width, children_height
+        # now use that calculated size to set the geometry for the
+        # passive children
+        for child in self.children:
+            if child.passive:
+                child.calculate_variable_geometry(self.__intrinsic_size)
+
+    @property
+    def intrinsic_size(self):
+        return self.__intrinsic_size or (self.width, self.height)
 
     @classmethod
     def candyxml_parse(cls, element):

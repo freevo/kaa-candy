@@ -29,7 +29,7 @@ class Stage(object):
                     raise e
                 time.sleep(0.1)
         self.size = size
-        self.group = Group()
+        self.group = Group(size=size)
         self.group._parent = self
         # We need the render pipe, the 'step' signal is not enough. It
         # is not triggered between timer and select and a change done
@@ -45,14 +45,14 @@ class Stage(object):
     def add(self, widget):
         self.group.add(widget)
 
-    def _candy_queue_sync(self):
+    def queue_rendering(self):
         """
         Queue sync
         """
         self._candy_dirty = True
         os.write(self._render_pipe[1], '1')
 
-    def _candy_queue_layout(self):
+    def queue_layout(self):
         """
         Queue layout sync
         """
@@ -86,7 +86,8 @@ class Stage(object):
                 tasks.append(('reparent', (widget._candy_id, widget.parent._candy_id)))
             else:
                 tasks.append(('reparent', (widget._candy_id, None)))
-        self.group._candy_sync(tasks)
+        self.group.calculate_variable_geometry(self.size)
+        self.group.__sync__(tasks)
         while Widget._candy_sync_delete:
             tasks.append(('delete', (Widget._candy_sync_delete.pop(0),)))
         if tasks:

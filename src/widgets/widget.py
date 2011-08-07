@@ -54,13 +54,16 @@ class Widget(object):
     #: template for object creation
     __template__ = candyxml.Template
 
+    # passive widgets with dynamic size depend on the size of the
+    # other widgets in a container
+    passive = False
+
     #: set if the object reacts on context
     context_sensitive = False
 
     # variable size calculation (percent)
-    __variable_width = None
-    __variable_height = None
-    __variable_parent_size = None
+    __variable_width = 100
+    __variable_height = 100
 
     # the geometry values depend on some internal calculations.
     # Therefore, they are hidden using properties.
@@ -86,33 +89,14 @@ class Widget(object):
     def __setattr__(self, attr, value):
         super(Widget, self).__setattr__(attr, value)
         if not self._candy_dirty and (attr in self.attributes or attr in ['xalign', 'yalign']):
-            self._candy_queue_sync()
-            
+            self.queue_rendering()
+
     def __del__(self):
         Widget._candy_sync_delete.append(self._candy_id)
         if self._candy_stage and not self._candy_stage._candy_dirty:
-            self._candy_stage._candy_queue_sync()
+            self._candy_stage.queue_rendering()
 
-    def _candy_queue_sync(self):
-        """
-        Queue sync
-        """
-        self._candy_dirty = True
-        parent = self.parent
-        if parent and not parent._candy_dirty:
-            parent._candy_queue_sync()
-
-    def _candy_queue_layout(self):
-        """
-        Queue sync for layout changes
-        """
-        self._candy_dirty = True
-        self._candy_geometry_dirty = True
-        parent = self.parent
-        if parent and not parent._candy_geometry_dirty:
-            parent._candy_queue_layout()
-
-    def _candy_sync(self, tasks):
+    def __sync__(self, tasks):
         if not self._candy_dirty:
             return
         attributes = {}
@@ -130,6 +114,34 @@ class Widget(object):
             self._candy_geometry_dirty = False
         tasks.append(('modify', (self._candy_id, attributes)))
         self._candy_dirty = False
+
+    def queue_rendering(self):
+        """
+        Queue sync
+        """
+        self._candy_dirty = True
+        parent = self.parent
+        if parent and not parent._candy_dirty:
+            parent.queue_rendering()
+
+    def queue_layout(self):
+        """
+        Queue sync for layout changes
+        """
+        self._candy_dirty = True
+        self._candy_geometry_dirty = True
+        parent = self.parent
+        if parent and not parent._candy_geometry_dirty:
+            parent.queue_layout()
+
+    def calculate_variable_geometry(self, (width, height)):
+        """
+        Calculate variable geometry for given percentage values
+        """
+        if self.__variable_width:
+            self.__width = int((width * self.__variable_width) / 100)
+        if self.__variable_height:
+            self.__height = int((height * self.__variable_height) / 100)
 
     def calculate_clutter_geometry(self):
         """
@@ -157,17 +169,17 @@ class Widget(object):
     def x(self, x):
         self.__x = x
         if not self._candy_geometry_dirty:
-            self._candy_queue_layout()
+            self.queue_layout()
 
     @property
     def y(self):
-        return self._y
+        return self.__y
 
     @y.setter
     def y(self, y):
         self.__y = y
         if not self._candy_geometry_dirty:
-            self._candy_queue_layout()
+            self.queue_layout()
 
     @property
     def width(self):
@@ -175,14 +187,18 @@ class Widget(object):
 
     @width.setter
     def width(self, width):
-        self.__width = width
         if isinstance(width, (str, unicode)):
             # use percent values provided by the string
             self.__variable_width = int(width[:-1])
+            self.__width = -1
+        elif width is None:
+            self.__variable_width = 100
+            self.__width = -1
         else:
             self.__variable_width = None
+            self.__width = width
         if not self._candy_geometry_dirty:
-            self._candy_queue_layout()
+            self.queue_layout()
 
     @property
     def height(self):
@@ -190,14 +206,18 @@ class Widget(object):
 
     @height.setter
     def height(self, height):
-        self.__height = height
         if isinstance(height, (str, unicode)):
             # use percent values provided by the string
             self.__variable_height = int(height[:-1])
+            self.__height = -1
+        elif height is None:
+            self.__variable_height = 100
+            self.__height = -1
         else:
             self.__variable_height = None
+            self.__height = height
         if not self._candy_geometry_dirty:
-            self._candy_queue_layout()
+            self.queue_layout()
 
     @property
     def intrinsic_size(self):
@@ -210,7 +230,7 @@ class Widget(object):
     @parent.setter
     def parent(self, parent):
         if not self in Widget._candy_sync_reparent:
-            self._candy_queue_sync()
+            self.queue_rendering()
             if self._parent:
                 self._parent.children.remove(self)
         self._parent = kaa.weakref.weakref(parent)
@@ -218,7 +238,7 @@ class Widget(object):
             if parent:
                 parent.children.append(self)
             Widget._candy_sync_reparent.append(self)
-            self._candy_queue_sync()
+            self.queue_rendering()
 
     @classmethod
     def candyxml_parse(cls, element):

@@ -7,7 +7,7 @@ import kaa.candy2
 xml = '''
 <candyxml geometry="800x600">
     <group name="g1" x="10" y="10" width="600" height="580">
-        <rectangle width="100" height="100" color="0xffff00" radius="50"
+        <rectangle width="50%" height="100" color="0xffff00" radius="50"
            border_size="5" border_color="0xffffff"/>
         <label y="120" font="Vera:24" color="0x00ff00">Test</label>
         <text y="150" font="Vera:24" color="0xff0000" align="center">
@@ -18,6 +18,21 @@ Text
             <properties xalign="center" yalign="center"/>
             center
         </label>
+        <group name="g2" x="10" y="300">
+            <rectangle x="10" width="100%" y="10" height="100%" color="0x08cccccc" radius="50"
+               border_size="5" border_color="0xffffff">
+                <properties passive="True"/>
+            </rectangle>
+            <rectangle x="20" width="100" height="100" color="0xffff00" radius="50"
+               border_size="5" border_color="0xffffff"/>
+        </group>
+        <group name="g3">
+            <properties xalign="center" yalign="bottom"/>
+            <rectangle x="10" width="100%" y="10" height="100%" color="0x05cccccc">
+                <properties passive="True"/>
+            </rectangle>
+            <label x="20" y="20" color="0x000000" font="Vera:24">highlight</label>
+        </group>
     </group>
 </candyxml>
 '''
