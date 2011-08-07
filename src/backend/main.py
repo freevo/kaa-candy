@@ -42,6 +42,7 @@ import gobject
 # kaa imports
 import kaa
 import kaa.rpc
+import kaa.candy2.core
 
 # cluter wrapper
 from wrapper import clutter
@@ -51,6 +52,7 @@ class Modules(object):
     Object holding modules imported by the stage
     """
     clutter = clutter
+    core = kaa.candy2.core
 
     def __call__(self, name):
         return getattr(self, name)

@@ -4,6 +4,11 @@
 # -----------------------------------------------------------------------------
 # $Id$
 #
+# Note: this file is imported from the application using kaa.candy as
+# well as the rendering process. Therefore, no imports from this file
+# to other parts of kaa.candy are allowed to avoid strange side
+# effects.
+#
 # -----------------------------------------------------------------------------
 # kaa-candy - Third generation Canvas System using Clutter as backend
 # Copyright (C) 2008-2011 Dirk Meyer, Jason Tackaberry
@@ -67,6 +72,7 @@ class Context(dict):
     def __getattr__(self, attr):
         return self.get(attr)
 
+
 class Color(list):
     """
     Color object which is a list of r,g,b,a with values between 0 and 255.
@@ -111,6 +117,9 @@ class Color(list):
         return [ x / 255.0 for x in self ]
 
 
+# helping cairo surface
+_font_cairo_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 10, 10)
+
 class Font(object):
     """
     Font object containing font name and font size
@@ -119,7 +128,6 @@ class Font(object):
     @ivar size: font size
     """
 
-    __cairo_surface = None
     __height_cache = {}
 
     ASCENT, TYPICAL, MAX_HEIGHT = range(3)
@@ -145,9 +153,7 @@ class Font(object):
             size = self.size
         info = self.__height_cache.get((self.name, size))
         if info is None:
-            if self.__cairo_surface is None:
-                self.__cairo_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 10, 10)
-            c = cairo.Context(self.__cairo_surface)
+            c = cairo.Context(_font_cairo_surface)
             c.select_font_face(self.name, cairo.FONT_SLANT_NORMAL)
             c.set_font_size(size)
             ascent, descent = c.font_extents()[:2]
@@ -161,9 +167,7 @@ class Font(object):
         """
         Get width of the given string
         """
-        if self.__cairo_surface is None:
-            self.__cairo_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 10, 10)
-        c = cairo.Context(self.__cairo_surface)
+        c = cairo.Context(_font_cairo_surface)
         c.select_font_face(self.name, cairo.FONT_SLANT_NORMAL)
         c.set_font_size(self.size)
         # add x_bearing to width (maybe use x_advance later)

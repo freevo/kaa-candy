@@ -9,6 +9,7 @@ xml = '''
     <group name="g1" x="10" y="10" width="600" height="580">
         <rectangle width="100" height="100" color="0xffff00" radius="50"
            border_size="5" border_color="0xffffff"/>
+        <text y="120" font="Vera:24" color="0x00ff00">Test</text>
     </group>
 </candyxml>
 '''
