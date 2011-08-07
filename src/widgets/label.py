@@ -1,6 +1,6 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# text.py - text Widget
+# label.py - label widget
 # -----------------------------------------------------------------------------
 # $Id: $
 #
@@ -29,14 +29,14 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Text' ]
+__all__ = [ 'Label' ]
 
 import widget
 from ..core import Color, Font
 
-class Text(widget.Widget):
-    candyxml_name = 'text'
-    candy_backend = 'candy.Text'
+class Label(widget.Widget):
+    candyxml_name = 'label'
+    candy_backend = 'candy.Label'
     attributes = widget.Widget.attributes + [ 'color', 'font', 'text' ]
 
     def __init__(self, pos=None, size=None, color=None, font=None, text='', context=None):
@@ -51,7 +51,7 @@ class Text(widget.Widget):
         @param font: kaa.candy.Font object
         @param context: the context the widget is created in
         """
-        super(Text, self).__init__(pos, size, context)
+        super(Label, self).__init__(pos, size, context)
         self.color = color
         self.font = font
         self.text = text
@@ -60,11 +60,11 @@ class Text(widget.Widget):
     def candyxml_parse(cls, element):
         """
         Parse the candyxml element for parameter to create the widget. Example::
-          <text y='50' width='100' font='Vera:24' color='0xffffffff'>
+          <label y='50' width='100' font='Vera:24' color='0xffffffff'>
               text to show
-          </text>
+          </label>
         The text can also be a context based variable like C{$text}. This
         will make the widget context sensitive.
         """
-        return super(Text, cls).candyxml_parse(element).update(
+        return super(Label, cls).candyxml_parse(element).update(
             font=element.font, color=element.color, text=element.content)

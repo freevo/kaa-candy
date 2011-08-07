@@ -32,7 +32,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Text' ]
+__all__ = [ 'Label' ]
 
 import cairo
 import widget
@@ -40,7 +40,7 @@ import widget
 clutter = candy_module('clutter')
 core = candy_module('core')
 
-class Text(widget.Widget):
+class Label(widget.Widget):
 
     def create(self):
         """
@@ -66,7 +66,7 @@ class Text(widget.Widget):
         """
         Render the widget
         """
-        super(Text, self).update(modified)
+        super(Label, self).update(modified)
         width, height, fade = self.calculate_size()
         if width != self.obj.get_width() or height != self.obj.get_height():
             self.obj.set_surface_size(int(width), int(height))
