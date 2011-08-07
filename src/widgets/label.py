@@ -37,7 +37,7 @@ from ..core import Color, Font
 class Label(widget.Widget):
     candyxml_name = 'label'
     candy_backend = 'candy.Label'
-    attributes = widget.Widget.attributes + [ 'color', 'font', 'text' ]
+    attributes = [ 'color', 'font', 'text' ]
 
     def __init__(self, pos=None, size=None, color=None, font=None, text='', context=None):
         """
@@ -55,6 +55,18 @@ class Label(widget.Widget):
         self.color = color
         self.font = font
         self.text = text
+
+    @property
+    def intrinsic_size(self):
+        if self.font.size == 0:
+            # get font based on widget height
+            self.font = self.font.get_font(self.height)
+        # get widget width and height
+        width = self.font.get_width(self.text)
+        height = self.font.get_height(Font.MAX_HEIGHT)
+        if self.width and width > self.width:
+            width = self.width
+        return width, height
 
     @classmethod
     def candyxml_parse(cls, element):

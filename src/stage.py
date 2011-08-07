@@ -15,7 +15,7 @@ class Stage(object):
 
     def __init__(self, size, name):
         args = [ 'python', os.path.dirname(__file__) + '/backend/main.py', name ]
-        self._candy_dirty = True
+        self._candy_dirty = self._candy_geometry_dirty = True
         self.server = subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr)
         retry = 50
         while True:
@@ -30,7 +30,7 @@ class Stage(object):
                 time.sleep(0.1)
         self.size = size
         self.group = Group()
-        self.group._candy_parent_obj = self
+        self.group._parent = self
         # We need the render pipe, the 'step' signal is not enough. It
         # is not triggered between timer and select and a change done
         # in a timer may get lost.
@@ -52,6 +52,15 @@ class Stage(object):
         self._candy_dirty = True
         os.write(self._render_pipe[1], '1')
 
+    def _candy_queue_layout(self):
+        """
+        Queue layout sync
+        """
+        self._candy_geometry_dirty = True
+        if not self._candy_dirty:
+            self._candy_dirty = True
+            os.write(self._render_pipe[1], '1')
+
     def sync(self):
         # read the socket to handle the sync
         try:
@@ -59,6 +68,7 @@ class Stage(object):
         except OSError:
             pass
         self._candy_dirty = False
+        self._candy_geometry_dirty = False
         tasks = []
         while Widget._candy_sync_new:
             widget = Widget._candy_sync_new.pop(0)

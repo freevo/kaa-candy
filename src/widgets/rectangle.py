@@ -37,8 +37,7 @@ from ..core import Color
 class Rectangle(widget.Widget):
     candyxml_name = 'rectangle'
     candy_backend = 'candy.Rectangle'
-    attributes = widget.Widget.attributes + \
-        [ 'color', 'border_size', 'border_color', 'radius' ]
+    attributes = [ 'color', 'border_size', 'border_color', 'radius' ]
 
     def __init__(self, pos=None, size=None, color=None, border_size=0,
                  border_color=None, radius=0, context=None):

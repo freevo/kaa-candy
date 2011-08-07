@@ -258,11 +258,8 @@ class Properties(dict, Modifier):
         Parse the candyxml element and create a Properties object::
 
           <widget>
-            <properties key=value key=value>
+            <properties key=value key=value/>
           </widget>
-
-        Possible keys are C{opacity} (int), C{depth} (int),
-        C{scale} (float,float), C{anchor_point} (float,float)
         """
         properties = cls()
         for key, value in element.attributes():

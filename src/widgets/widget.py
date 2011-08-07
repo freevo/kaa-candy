@@ -4,6 +4,8 @@ __all__ = [ 'Widget' ]
 import kaa
 import kaa.weakref
 
+from kaa.utils import property
+
 from .. import candyxml
 from ..core import Modifier
 
@@ -22,7 +24,7 @@ class _dict(dict):
 class Widget(object):
 
     candy_backend = 'candy.Widget'
-    attributes = [ 'x', 'y', 'width', 'height' ]
+    attributes = []
 
     ALIGN_LEFT = 'left'
     ALIGN_RIGHT = 'right'
@@ -37,7 +39,8 @@ class Widget(object):
     _candy_sync_reparent = []
 
     _candy_dirty = True
-    _candy_parent_obj = None
+    _candy_geometry_dirty = True
+    _parent = None
     _candy_parent_id = None
     _candy_stage = None
 
@@ -54,10 +57,20 @@ class Widget(object):
     #: set if the object reacts on context
     context_sensitive = False
 
-    x = 0
-    y = 0
-    width = None
-    height = None
+    # variable size calculation (percent)
+    __variable_width = None
+    __variable_height = None
+    __variable_parent_size = None
+
+    # the geometry values depend on some internal calculations.
+    # Therefore, they are hidden using properties.
+    __x = 0
+    __y = 0
+    __width = None
+    __height = None
+
+    xalign = None
+    yalign = None
 
     def __init__(self, pos=None, size=None, context=None):
         global next_candy_id
@@ -72,9 +85,9 @@ class Widget(object):
 
     def __setattr__(self, attr, value):
         super(Widget, self).__setattr__(attr, value)
-        if attr in self.attributes and not self._candy_dirty:
+        if not self._candy_dirty and (attr in self.attributes or attr in ['xalign', 'yalign']):
             self._candy_queue_sync()
-
+            
     def __del__(self):
         Widget._candy_sync_delete.append(self._candy_id)
         if self._candy_stage and not self._candy_stage._candy_dirty:
@@ -89,30 +102,118 @@ class Widget(object):
         if parent and not parent._candy_dirty:
             parent._candy_queue_sync()
 
+    def _candy_queue_layout(self):
+        """
+        Queue sync for layout changes
+        """
+        self._candy_dirty = True
+        self._candy_geometry_dirty = True
+        parent = self.parent
+        if parent and not parent._candy_geometry_dirty:
+            parent._candy_queue_layout()
+
     def _candy_sync(self, tasks):
         if not self._candy_dirty:
             return
         attributes = {}
         for a in self.attributes:
-            old_value = self._candy_cache.get(a, NOT_SET)
             new_value = getattr(self, a)
-            if old_value != new_value:
+            if self._candy_cache.get(a, NOT_SET) != new_value:
                 attributes[a] = new_value
                 self._candy_cache[a] = new_value
+        if self._candy_geometry_dirty:
+            geometry = self.calculate_clutter_geometry()
+            for a in [ 'x', 'y', 'width', 'height' ]:
+                if self._candy_cache.get(a, NOT_SET) != geometry[a]:
+                    attributes[a] = geometry[a]
+                    self._candy_cache[a] = geometry[a]
+            self._candy_geometry_dirty = False
         tasks.append(('modify', (self._candy_id, attributes)))
         self._candy_dirty = False
 
+    def calculate_clutter_geometry(self):
+        """
+        Calculate the actual geometry of the objects
+        """
+        geometry = {'x': self.__x, 'y': self.__y}
+        width, height = self.intrinsic_size
+        if self.xalign == Widget.ALIGN_CENTER:
+            geometry['x'] += int((self.__width - width) / 2)
+        if self.xalign == Widget.ALIGN_RIGHT:
+            geometry['x'] += int(self.__width - width)
+        if self.yalign == Widget.ALIGN_CENTER:
+            geometry['y'] += int((self.__height - height) / 2)
+        if self.yalign == Widget.ALIGN_BOTTOM:
+            geometry['y'] += int(self.__height - height)
+        geometry['width'] = width
+        geometry['height'] = height
+        return geometry
+
+    @property
+    def x(self):
+        return self.__x
+
+    @x.setter
+    def x(self, x):
+        self.__x = x
+        if not self._candy_geometry_dirty:
+            self._candy_queue_layout()
+
+    @property
+    def y(self):
+        return self._y
+
+    @y.setter
+    def y(self, y):
+        self.__y = y
+        if not self._candy_geometry_dirty:
+            self._candy_queue_layout()
+
+    @property
+    def width(self):
+        return self.__width
+
+    @width.setter
+    def width(self, width):
+        self.__width = width
+        if isinstance(width, (str, unicode)):
+            # use percent values provided by the string
+            self.__variable_width = int(width[:-1])
+        else:
+            self.__variable_width = None
+        if not self._candy_geometry_dirty:
+            self._candy_queue_layout()
+
+    @property
+    def height(self):
+        return self.__height
+
+    @height.setter
+    def height(self, height):
+        self.__height = height
+        if isinstance(height, (str, unicode)):
+            # use percent values provided by the string
+            self.__variable_height = int(height[:-1])
+        else:
+            self.__variable_height = None
+        if not self._candy_geometry_dirty:
+            self._candy_queue_layout()
+
+    @property
+    def intrinsic_size(self):
+        return self.__width, self.__height
+
     @property
     def parent(self):
-        return self._candy_parent_obj
+        return self._parent
 
     @parent.setter
     def parent(self, parent):
         if not self in Widget._candy_sync_reparent:
             self._candy_queue_sync()
-            if self._candy_parent_obj:
-                self._candy_parent_obj.children.remove(self)
-        self._candy_parent_obj = kaa.weakref.weakref(parent)
+            if self._parent:
+                self._parent.children.remove(self)
+        self._parent = kaa.weakref.weakref(parent)
         if not self in Widget._candy_sync_reparent:
             if parent:
                 parent.children.append(self)

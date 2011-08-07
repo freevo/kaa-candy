@@ -14,6 +14,10 @@ xml = '''
 Multiline
 Text
         </text>
+        <label y="180" font="Vera:24" color="0x00ff00" width="200" height="100">
+            <properties xalign="center" yalign="center"/>
+            center
+        </label>
     </group>
 </candyxml>
 '''

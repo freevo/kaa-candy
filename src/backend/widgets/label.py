@@ -46,7 +46,7 @@ class Label(widget.Widget):
         """
         Create the clutter object
         """
-        self.obj = clutter.CairoTexture(*self.calculate_size()[:2])
+        self.obj = clutter.CairoTexture(self.width, self.height)
         self.obj.show()
 
     def calculate_size(self):
@@ -67,9 +67,9 @@ class Label(widget.Widget):
         Render the widget
         """
         super(Label, self).update(modified)
-        width, height, fade = self.calculate_size()
-        if width != self.obj.get_width() or height != self.obj.get_height():
-            self.obj.set_surface_size(int(width), int(height))
+        fade = self.font.get_width(self.text) > self.width
+        if self.width != self.obj.get_width() or self.height != self.obj.get_height():
+            self.obj.set_surface_size(int(self.width), int(self.height))
         self.obj.clear()
         # draw new text string
         context = self.obj.cairo_create()
@@ -79,11 +79,11 @@ class Label(widget.Widget):
         context.select_font_face(self.font.name, cairo.FONT_SLANT_NORMAL)
         context.set_font_size(self.font.size)
         if fade and self.color:
-            s = cairo.LinearGradient(0, 0, width, 0)
+            s = cairo.LinearGradient(0, 0, self.width, 0)
             c = self.color.to_cairo()
             s.add_color_stop_rgba(0, *c)
             # 50 pixel fading
-            s.add_color_stop_rgba(1 - (50.0 / width), *c)
+            s.add_color_stop_rgba(1 - (50.0 / self.width), *c)
             s.add_color_stop_rgba(1, c[0], c[1], c[2], 0)
             context.set_source(s)
         context.move_to(0, context.font_extents()[0])
