@@ -41,6 +41,13 @@ class Widget(object):
     # candy parent object
     parent = None
 
+    ALIGN_LEFT = 'left'
+    ALIGN_RIGHT = 'right'
+    ALIGN_TOP = 'top'
+    ALIGN_BOTTOM = 'bottom'
+    ALIGN_CENTER = 'center'
+    ALIGN_SHRINK = 'shrink'
+
     def prepare(self, modified):
         """
         Prepare rendering

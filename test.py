@@ -10,6 +10,10 @@ xml = '''
         <rectangle width="100" height="100" color="0xffff00" radius="50"
            border_size="5" border_color="0xffffff"/>
         <label y="120" font="Vera:24" color="0x00ff00">Test</label>
+        <text y="150" font="Vera:24" color="0xff0000" align="center">
+Multiline
+Text
+        </text>
     </group>
 </candyxml>
 '''

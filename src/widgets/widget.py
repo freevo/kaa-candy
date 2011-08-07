@@ -24,6 +24,13 @@ class Widget(object):
     candy_backend = 'candy.Widget'
     attributes = [ 'x', 'y', 'width', 'height' ]
 
+    ALIGN_LEFT = 'left'
+    ALIGN_RIGHT = 'right'
+    ALIGN_TOP = 'top'
+    ALIGN_BOTTOM = 'bottom'
+    ALIGN_CENTER = 'center'
+    ALIGN_SHRINK = 'shrink'
+
     # internal class variables
     _candy_sync_new = []
     _candy_sync_delete = []
