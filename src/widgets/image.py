@@ -41,9 +41,10 @@ import widget
 class Image(widget.Widget):
     candyxml_name = 'image'
     candy_backend = 'candy.Imlib2Texture'
-    attributes = [ 'data', 'modified' ]
+    attributes = [ 'data', 'modified', 'keep_aspect' ]
 
     modified = False
+    keep_aspect = False
 
     def __init__(self, pos=None, size=None, url=None, context=None):
         """
@@ -59,6 +60,20 @@ class Image(widget.Widget):
         super(Image, self).__init__(pos, size, context)
         self.image = url
 
+    def calculate_intrinsic_size(self, size):
+        """
+        Calculate intrinsic size based on the parent's size
+        """
+        width, height = super(Image, self).calculate_intrinsic_size(size)
+        if self.keep_aspect:
+            aspect = float(self.__imagedata.width) / self.__imagedata.height
+            if int(height * aspect) > width:
+                height = int(width / aspect)
+            else:
+                width = int(height * aspect)
+            self.intrinsic_size = width, height
+        return width, height
+
     def __sync__(self, tasks):
         if self.modified:
             # The modified flag is set. That also means the widget is
@@ -71,8 +86,8 @@ class Image(widget.Widget):
                 os.write(fd, str(self.__imagedata.get_raw_data()))
                 self.data = filename, self.__imagedata.size
             finally:
+                self.modified = False
                 os.close(fd)
-        self.modified = False
         # now we call the super.__sync__ which will reset the dirty
         # flag and sync the data to the backend
         super(Image, self).__sync__(tasks)

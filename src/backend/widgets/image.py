@@ -91,6 +91,7 @@ class Imlib2Texture(widget.Widget):
         """
         Render the widget
         """
+        super(Imlib2Texture, self).update(modified)
         if 'data' in modified:
             filename, (width, height) = self.data
             self.obj.set_from_rgb_data(self.imagedata, True, width, height,
