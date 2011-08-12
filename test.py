@@ -33,6 +33,7 @@ Text
             </rectangle>
             <label x="20" y="20" color="0x000000" font="Vera:24">highlight</label>
         </group>
+        <image url="logo.png"/>
     </group>
 </candyxml>
 '''

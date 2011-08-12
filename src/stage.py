@@ -90,10 +90,10 @@ class Stage(object):
         while Widget._candy_sync_delete:
             tasks.append(('delete', (Widget._candy_sync_delete.pop(0),)))
         if tasks:
-            for t in tasks:
-                print '', t
+            # for t in tasks:
+            #     print '', t
             self.ipc.rpc('sync', tasks)
-        print 'sync'
+        # print 'sync'
 
     def set_content_geometry(self, size):
         if isinstance(size, (str, unicode)):

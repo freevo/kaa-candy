@@ -32,7 +32,10 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'CairoTexture' ]
+__all__ = [ 'CairoTexture', 'Imlib2Texture' ]
+
+import os
+import kaa.imlib2
 
 import widget
 
@@ -58,3 +61,38 @@ class CairoTexture(widget.Widget):
         if ('width' in modified or 'height' in modified) and self.height and self.width:
             self.obj.set_surface_size(self.width, self.height)
         self.obj.clear()
+
+
+class Imlib2Texture(widget.Widget):
+    """
+    Imlib2 based Texture widget.
+    """
+
+    def prepare(self, modified):
+        """
+        Prepare rendering
+        """
+        if 'data' in modified:
+            # load the image in the kaa mainloop (it does not have to
+            # be this way, we use shared memory; just to use the
+            # prepare() function once)
+            filename, (width, height) = self.data
+            self.imagedata = open(filename).read()
+            os.unlink(filename)
+
+    def create(self):
+        """
+        Create the clutter object
+        """
+        self.obj = clutter.Texture()
+        self.obj.show()
+
+    def update(self, modified):
+        """
+        Render the widget
+        """
+        if 'data' in modified:
+            filename, (width, height) = self.data
+            self.obj.set_from_rgb_data(self.imagedata, True, width, height,
+                 width*4, 4, clutter.TEXTURE_RGB_FLAG_BGR)
+            del self.imagedata
