@@ -56,16 +56,18 @@ class Label(widget.Widget):
         self.font = font
         self.text = text
 
-    @property
-    def intrinsic_size(self):
+    def calculate_intrinsic_size(self, size):
+        """
+        Calculate intrinsic size based on the parent's size
+        """
+        super(Label, self).calculate_intrinsic_size(size)
         if self.font.size == 0:
-            # get font based on widget height
+            # FIXME: wrong when the widget size changes
             self.font = self.font.get_font(self.height)
-        # get widget width and height
-        width = self.font.get_width(self.text)
-        height = self.font.get_height(Font.MAX_HEIGHT)
-        if self.width and width > self.width:
-            width = self.width
+        width, height = self.font.get_width(self.text), self.font.get_height(Font.MAX_HEIGHT)
+        if self.width and width > self.width and self.width > 0:
+            width = self.width, self.intrinsic_size[1]
+        self.intrinsic_size = width, height
         return width, height
 
     @classmethod

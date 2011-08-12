@@ -17,7 +17,6 @@ class Group(widget.Widget):
                 template = widget
                 widget = template(context)
             self.add(widget)
-        self.__intrinsic_size = None
 
     def __del__(self):
         del self.children
@@ -27,6 +26,47 @@ class Group(widget.Widget):
         super(Group, self).__sync__(tasks)
         for child in self.children:
             child.__sync__(tasks)
+        return True
+
+    def queue_rendering(self):
+        """
+        Queue sync for layout changes
+        """
+        super(Group, self).queue_rendering()
+        # Note: changing one widget will mark all anchestors dirty to
+        # force the __sync__ method to call the widget. On the other
+        # side, marking a Group dirty will also mark all variable
+        # sized children. Therefore, changing one widget may result in
+        # a complete re-checking all widgets on sync. This is a stupid
+        # and unneccessary task, but keeping all dependencies in
+        # account is very complex and maybe not worth it. So we mark
+        # everything dirty, no big deal. The sync method will only
+        # sync what really changed and by this we have the overhead in
+        # the main app and not the backend.
+        for child in self.children:
+            if child.variable_size and not child._candy_dirty:
+                child.queue_rendering()
+
+    def calculate_intrinsic_size(self, size):
+        """
+        Calculate intrinsic size based on the parent's size
+        """
+        super(Group, self).calculate_intrinsic_size(size)
+        size = self.width, self.height
+        children_width = children_height = 0
+        for child in self.children:
+            if child.passive:
+                continue
+            intrinsic_size = child.calculate_intrinsic_size(size)
+            children_width = max(children_width, child.x + intrinsic_size[0])
+            children_height = max(children_height, child.y + intrinsic_size[1])
+        self.intrinsic_size = children_width, children_height
+        # now use that calculated size to set the geometry for the
+        # passive children
+        for child in self.children:
+            if child.passive:
+                child.calculate_intrinsic_size(self.intrinsic_size)
+        return self.intrinsic_size
 
     def add(self, *widgets):
         """
@@ -34,33 +74,6 @@ class Group(widget.Widget):
         """
         for widget in widgets:
             widget.parent = self
-
-    def calculate_variable_geometry(self, size):
-        """
-        Calculate variable geometry for given percentage values
-        """
-        super(Group, self).calculate_variable_geometry(size)
-        if not self._candy_geometry_dirty: # FIXME: that line is not correct!
-            return
-        size = self.width, self.height
-        children_width = children_height = 0
-        for child in self.children:
-            if child.passive:
-                continue
-            child.calculate_variable_geometry(size)
-            intrinsic_size = child.intrinsic_size
-            children_width = max(children_width, child.x + intrinsic_size[0])
-            children_height = max(children_height, child.y + intrinsic_size[1])
-        self.__intrinsic_size = children_width, children_height
-        # now use that calculated size to set the geometry for the
-        # passive children
-        for child in self.children:
-            if child.passive:
-                child.calculate_variable_geometry(self.__intrinsic_size)
-
-    @property
-    def intrinsic_size(self):
-        return self.__intrinsic_size or (self.width, self.height)
 
     @classmethod
     def candyxml_parse(cls, element):

@@ -84,13 +84,18 @@ class Widget(object):
         if self.parent:
             self.parent.obj.add(self.obj)
 
+    def set_position(self):
+        """
+        Set a new position without re-rendering the widget
+        Executed in the clutter thread
+        """
+        self.obj.set_position(self.x, self.y)
+
     def update(self, modified):
         """
         Render the widget
         Executed in the clutter thread
         """
-        if 'x' in modified or 'y' in modified:
-            self.obj.set_position(self.x, self.y)
         if 'width' in modified and self.width:
             self.obj.set_width(self.width)
         if 'height' in modified and self.height:

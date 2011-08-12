@@ -138,7 +138,6 @@ class Stage(object):
         Sync callback from the candy application
         """
         for cmd, args in tasks:
-            print cmd, args
             if cmd == 'stage':
                 self.queue.append((self.create, args[0], self.widgets[args[1]]))
             if cmd == 'scale':
@@ -151,7 +150,12 @@ class Stage(object):
                     self.queue.append((self.widgets[args[0]].reparent, self.widgets[args[1]]))
                 else:
                     self.queue.append((self.widgets[args[0]].reparent, None))
-            if cmd == 'modify':
+            if cmd == 'position':
+                w = self.widgets[args[0]]
+                w.x = args[1]
+                w.y = args[2]
+                self.queue.append((w.set_position, ))
+            if cmd == 'update':
                 w = self.widgets[args[0]]
                 for a, v in args[1].items():
                     setattr(w, a, v)

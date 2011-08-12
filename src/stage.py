@@ -11,11 +11,20 @@ import threading
 from widgets import Group, Widget
 import candyxml
 
+class StageGroup(Group):
+    def __init__(self, stage, size):
+        super(StageGroup, self).__init__(size=size)
+        self.stage = stage
+
+    @property
+    def parent(self):
+        return self.stage
+
 class Stage(object):
 
     def __init__(self, size, name):
         args = [ 'python', os.path.dirname(__file__) + '/backend/main.py', name ]
-        self._candy_dirty = self._candy_geometry_dirty = True
+        self._candy_dirty = True
         self.server = subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr)
         retry = 50
         while True:
@@ -29,8 +38,8 @@ class Stage(object):
                     raise e
                 time.sleep(0.1)
         self.size = size
-        self.group = Group(size=size)
-        self.group._parent = self
+        # create the base widget
+        self.group = StageGroup(self, size=size)
         # We need the render pipe, the 'step' signal is not enough. It
         # is not triggered between timer and select and a change done
         # in a timer may get lost.
@@ -49,14 +58,6 @@ class Stage(object):
         """
         Queue sync
         """
-        self._candy_dirty = True
-        os.write(self._render_pipe[1], '1')
-
-    def queue_layout(self):
-        """
-        Queue layout sync
-        """
-        self._candy_geometry_dirty = True
         if not self._candy_dirty:
             self._candy_dirty = True
             os.write(self._render_pipe[1], '1')
@@ -68,7 +69,6 @@ class Stage(object):
         except OSError:
             pass
         self._candy_dirty = False
-        self._candy_geometry_dirty = False
         tasks = []
         while Widget._candy_sync_new:
             widget = Widget._candy_sync_new.pop(0)
@@ -86,12 +86,14 @@ class Stage(object):
                 tasks.append(('reparent', (widget._candy_id, widget.parent._candy_id)))
             else:
                 tasks.append(('reparent', (widget._candy_id, None)))
-        self.group.calculate_variable_geometry(self.size)
         self.group.__sync__(tasks)
         while Widget._candy_sync_delete:
             tasks.append(('delete', (Widget._candy_sync_delete.pop(0),)))
         if tasks:
+            for t in tasks:
+                print '', t
             self.ipc.rpc('sync', tasks)
+        print 'sync'
 
     def set_content_geometry(self, size):
         if isinstance(size, (str, unicode)):
