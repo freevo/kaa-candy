@@ -103,9 +103,9 @@ class Stage(object):
         Executed inside the clutter thread
         """
         self.group = group
-        self.obj = clutter.Stage()
+        self.obj = clutter.Stage.get_default()
         self.obj.set_size(*size)
-        self.obj.set_color(clutter.Color(0, 0, 0, 0xff))
+        self.obj.set_color(clutter.Color.new(0, 0, 0, 0xff))
         self.obj.add(group.obj)
         self.obj.show()
 

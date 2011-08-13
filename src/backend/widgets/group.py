@@ -44,5 +44,5 @@ class Group(widget.Widget):
         """
         Create the clutter object
         """
-        self.obj = clutter.Group()
+        self.obj = clutter.Group.new()
         self.obj.show()
