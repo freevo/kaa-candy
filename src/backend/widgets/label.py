@@ -46,7 +46,7 @@ class Label(widget.Widget):
         """
         Create the clutter object
         """
-        self.obj = clutter.CairoTexture.new(self.width, self.height)
+        self.obj = clutter.CairoTexture(self.width, self.height)
         self.obj.show()
 
     def calculate_size(self):

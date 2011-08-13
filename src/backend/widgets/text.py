@@ -46,7 +46,7 @@ class Text(widget.Widget):
         """
         Create the clutter object
         """
-        self.obj = clutter.Text.new()
+        self.obj = clutter.Text()
         self.obj.show()
 
     def update(self, modified):
@@ -60,5 +60,5 @@ class Text(widget.Widget):
         self.obj.set_line_wrap_mode(pango.WRAP_WORD_CHAR)
         self.obj.set_use_markup(True)
         self.obj.set_font_name("%s %spx" % (self.font.name, self.font.size))
-        self.obj.set_color(clutter.Color.new(*self.color))
+        self.obj.set_color(clutter.Color(*self.color))
         self.obj.set_text(self.text)

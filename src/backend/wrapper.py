@@ -62,19 +62,16 @@ class Wrapper(object):
             # Import clutter only in the gobject thread
             # This function will be the running mainloop
             try:
-                from gi.repository import Clutter as backend
+                import clutter as backend
                 #import clutter as backend
             except Exception, e:
                 log.exception('unable to import clutter')
                 return
             for key in dir(backend):
                 if key[0].isalpha():
-                    try:
-                        setattr(clutter, key, getattr(backend, key))
-                    except (NotImplementedError, TypeError), e:
-                        pass
+                    setattr(clutter, key, getattr(backend, key))
             clutter.threads_init()
-            clutter.init([])
+            clutter.init()
             # now add some C stuff we have in kaa.candy
             import libcandy
             for key in dir(libcandy):

@@ -50,7 +50,7 @@ class CairoTexture(widget.Widget):
         """
         Create the clutter object
         """
-        self.obj = clutter.CairoTexture.new(self.width, self.height)
+        self.obj = clutter.CairoTexture(self.width, self.height)
         self.obj.show()
 
     def update(self, modified):
@@ -84,7 +84,7 @@ class Imlib2Texture(widget.Widget):
         """
         Create the clutter object
         """
-        self.obj = clutter.Texture.new()
+        self.obj = clutter.Texture()
         self.obj.show()
 
     def update(self, modified):
@@ -95,5 +95,5 @@ class Imlib2Texture(widget.Widget):
         if 'data' in modified:
             filename, (width, height) = self.data
             self.obj.set_from_rgb_data(self.imagedata, True, width, height,
-                 width*4, 4, clutter.TextureFlags.RGB_FLAG_BGR)
+                 width*4, 4, clutter.TEXTURE_RGB_FLAG_BGR)
             del self.imagedata
