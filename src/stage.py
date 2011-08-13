@@ -76,9 +76,10 @@ class Stage(object):
             tasks.append(('add', (widget.candy_backend, widget._candy_id)))
         if not self.initialized:
             self.initialized = True
-            tasks.append(('stage', (self.size, self.group._candy_id)))
+            tasks.append(('add', ('stage.Stage', -1)))
+            tasks.append(('call', (-1, 'init', (self.size, 'candy:widget/%s' % self.group._candy_id))))
         if self.scale:
-            tasks.append(('scale', (self.scale,)))
+            tasks.append(('call', (-1, 'scale', (self.scale,))))
             self.scale = None
         while Widget._candy_sync_reparent:
             widget = Widget._candy_sync_reparent.pop(0)

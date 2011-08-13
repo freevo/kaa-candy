@@ -37,8 +37,8 @@ __all__ = [ 'Label' ]
 import cairo
 import widget
 
-clutter = candy_module('clutter')
-core = candy_module('core')
+import clutter
+import core
 
 class Label(widget.Widget):
 

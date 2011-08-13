@@ -34,9 +34,8 @@
 
 __all__ = [ 'Rectangle' ]
 
+import clutter
 import image
-
-clutter = candy_module('clutter')
 
 class Rectangle(image.CairoTexture):
 

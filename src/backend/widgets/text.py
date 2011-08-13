@@ -34,11 +34,10 @@
 
 __all__ = [ 'Text' ]
 
+import clutter
 import pango
 
 import widget
-
-clutter = candy_module('clutter')
 
 class Text(widget.Widget):
 

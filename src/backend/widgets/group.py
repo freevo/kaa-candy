@@ -34,9 +34,8 @@
 
 __all__ = [ 'Group' ]
 
+import clutter
 import widget
-
-clutter = candy_module('clutter')
 
 class Group(widget.Widget):
 

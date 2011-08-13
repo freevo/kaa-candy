@@ -37,9 +37,8 @@ __all__ = [ 'CairoTexture', 'Imlib2Texture' ]
 import os
 import kaa.imlib2
 
+import clutter
 import widget
-
-clutter = candy_module('clutter')
 
 class CairoTexture(widget.Widget):
     """
