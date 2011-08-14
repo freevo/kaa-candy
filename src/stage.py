@@ -50,6 +50,7 @@ class Stage(object):
         os.write(self._render_pipe[1], '1')
         self.initialized = False
         self.scale = None
+        self.commands = []
 
     def add(self, *widgets):
         self.group.add(*widgets)
@@ -61,6 +62,15 @@ class Stage(object):
         """
         Queue sync
         """
+        if not self._candy_dirty:
+            self._candy_dirty = True
+            os.write(self._render_pipe[1], '1')
+
+    def queue_command(self, candy_id, cmd, args):
+        """
+        Queue sync
+        """
+        self.commands.append((candy_id, cmd, args))
         if not self._candy_dirty:
             self._candy_dirty = True
             os.write(self._render_pipe[1], '1')
@@ -77,6 +87,9 @@ class Stage(object):
         while Widget._candy_sync_new:
             widget = Widget._candy_sync_new.pop(0)
             widget._candy_stage = self
+            widget.backend.stage = self
+            while widget.backend.queue:
+                self.commands.append(widget.backend.queue.pop(0))
             tasks.append(('add', (widget.candy_backend, widget._candy_id)))
         if not self.initialized:
             self.initialized = True
@@ -92,6 +105,8 @@ class Stage(object):
             else:
                 tasks.append(('reparent', (widget._candy_id, None)))
         self.group.__sync__(tasks)
+        while self.commands:
+            tasks.append(('call', self.commands.pop(0)))
         while Widget._candy_sync_delete:
             tasks.append(('delete', (Widget._candy_sync_delete.pop(0),)))
         if tasks:

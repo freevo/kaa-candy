@@ -18,6 +18,21 @@ class _dict(dict):
         super(_dict, self).update(**kwargs)
         return self
 
+class BackendWrapper(object):
+    def __init__(self, candy_id):
+        self.candy_id = candy_id
+        self.queue = []
+        self.stage = None
+
+    def call(self, cmd, *args):
+        if self.stage:
+            return self.stage.queue_command(self.candy_id, cmd, args)
+        self.queue.append((self.candy_id, cmd, args))
+            
+    def __getattr__(self, attr):
+        return lambda *args: self.call(attr, *args)
+
+
 class Widget(object):
 
     candy_backend = 'candy.Widget'
@@ -87,6 +102,7 @@ class Widget(object):
         Widget._candy_sync_new.append(self)
         self._candy_cache = {}
         self.__context = context or {}
+        self.backend = BackendWrapper(self._candy_id)
 
     def __setattr__(self, attr, value):
         super(Widget, self).__setattr__(attr, value)
