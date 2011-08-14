@@ -44,6 +44,8 @@ class Grid(group.AbstractGroup):
 
     fixed_size = True
 
+    __items = None
+
     def __init__(self, pos, size, cell_size, cell_item, items, template,
                  orientation, spacing=None, context=None):
         """
@@ -61,16 +63,13 @@ class Grid(group.AbstractGroup):
         @param context: the context the widget is created in
         """
         super(Grid, self).__init__(pos, size, context=context)
-        if isinstance(items, (str, unicode)):
-            # items is a string, get it from the context
-            items = self.context.get(items)
         # store arguments for later public use
         self.cell_size = cell_size
         # store arguments for later private use
         self.__orientation = orientation
-        self.__child_listing = items
-        self.__child_context = cell_item
-        self.__child_template = template
+        self.items = items
+        self.cell_item = cell_item
+        self.template = template
         self.spacing = spacing
 
     def create_grid(self):
@@ -116,15 +115,15 @@ class Grid(group.AbstractGroup):
         """
         Render one child
         """
-        if item_num < 0 or item_num >= len(self.__child_listing):
+        if item_num < 0 or item_num >= len(self.items):
             self.item_widgets[(pos_x, pos_y)] = None
             return
         # calculate the size where the child should be
         child_x = pos_x * self.item_width
         child_y = pos_y * self.item_height
         context = self.context.copy()
-        context[self.__child_context] = self.__child_listing[item_num]
-        child = self.__child_template(context=context)
+        context[self.cell_item] = self.items[item_num]
+        child = self.template(context=context)
         child.x = child_x
         child.y = child_y
         child.width, child.height = self.cell_size
@@ -146,6 +145,27 @@ class Grid(group.AbstractGroup):
                         self.create_item(item_num, x, y)
         return super(Grid, self).prepare_sync()
 
+    def context_sync(self):
+        self.items = self.__items_provided
+
+    @property
+    def items(self):
+        return self.__items
+
+    @items.setter
+    def items(self, items):
+        self.__items_provided = items
+        if isinstance(items, (str, unicode)):
+            # items is a string, get it from the context
+            items = self.context.get(items)
+        if self.__items != items:
+            if self.__items:
+                # we already had a valid list of items.
+                self.item_group.clear()
+                self.item_widgets = {}
+                self.queue_rendering()
+            self.__items = items
+
     @kaa.synchronized()
     def scroll_by(self, (x, y), secs, force=False):
         """
@@ -163,7 +183,7 @@ class Grid(group.AbstractGroup):
             if self.__orientation == Grid.VERTICAL:
                 num = (self.location[1] + y) * self.num_items_x + \
                       (self.location[0] + x)
-            if num >= 0 and num < len(self.__child_listing):
+            if num >= 0 and num < len(self.items):
                 # there is an item in the upper left corner
                 break
             # remove one cell in scroll, start with x and use y if
