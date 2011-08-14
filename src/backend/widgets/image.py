@@ -71,7 +71,7 @@ class Imlib2Texture(widget.Widget):
         """
         Prepare rendering
         """
-        if 'data' in modified:
+        if 'data' in modified and self.data[0]:
             # load the image in the kaa mainloop (it does not have to
             # be this way, we use shared memory; just to use the
             # prepare() function once)
@@ -91,7 +91,7 @@ class Imlib2Texture(widget.Widget):
         Render the widget
         """
         super(Imlib2Texture, self).update(modified)
-        if 'data' in modified:
+        if 'data' in modified and self.data[0]:
             filename, (width, height) = self.data
             self.obj.set_from_rgb_data(self.imagedata, True, width, height,
                  width*4, 4, clutter.TEXTURE_RGB_FLAG_BGR)

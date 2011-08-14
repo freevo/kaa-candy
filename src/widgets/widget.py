@@ -4,9 +4,7 @@ __all__ = [ 'Widget' ]
 import kaa
 import kaa.weakref
 
-from kaa.utils import property
-
-from .. import candyxml
+from .. import candyxml, core
 
 next_candy_id = 1
 
@@ -37,8 +35,8 @@ class Widget(object):
     _candy_sync_delete = []
     _candy_sync_reparent = []
 
+    # internal object variables
     _candy_dirty = True
-    _candy_parent_id = None
     _candy_stage = None
 
     class __metaclass__(type):
@@ -66,26 +64,29 @@ class Widget(object):
     __y = 0
     __width = None
     __height = None
-
     __intrinsic_size = None
     __variable_width = 100
     __variable_height = 100
 
     __parent = None
 
+    # attributes
+    name = None
+
     xalign = None
     yalign = None
 
     def __init__(self, pos=None, size=None, context=None):
         global next_candy_id
+        self._candy_id = next_candy_id
+        next_candy_id += 1
         if pos is not None:
             self.x, self.y = pos
         if size is not None:
             self.width, self.height = size
         Widget._candy_sync_new.append(self)
         self._candy_cache = {}
-        self._candy_id = next_candy_id
-        next_candy_id += 1
+        self.__context = context or {}
 
     def __setattr__(self, attr, value):
         super(Widget, self).__setattr__(attr, value)
@@ -126,6 +127,9 @@ class Widget(object):
             tasks.append(('update', (self._candy_id, attributes)))
         self._candy_dirty = False
         return True
+
+    def prepare_sync(self):
+        return self._candy_dirty
 
     def queue_rendering(self):
         """
@@ -173,6 +177,9 @@ class Widget(object):
 
     @property
     def width(self):
+        if self.__width == -1:
+            # force calculation
+            self.intrinsic_size
         return self.__width
 
     @width.setter
@@ -192,6 +199,9 @@ class Widget(object):
 
     @property
     def height(self):
+        if self.__height == -1:
+            # force calculation
+            self.intrinsic_size
         return self.__height
 
     @height.setter
@@ -220,7 +230,7 @@ class Widget(object):
     @property
     def intrinsic_size(self):
         if not self.__intrinsic_size:
-            if self.__variable_width or self.__variable_height:
+            if (self.__variable_width or self.__variable_height) and not self.parent.__intrinsic_size:
                 self.parent.intrinsic_size
             else:
                 self.calculate_intrinsic_size(self.parent.size)
@@ -263,6 +273,18 @@ class Widget(object):
                 parent.children.append(self)
             Widget._candy_sync_reparent.append(self)
             self.queue_rendering()
+
+    def context_sync(self):
+        pass
+
+    @property
+    def context(self):
+        return self.__context
+
+    @context.setter
+    def context(self, context):
+        self.__context = context
+        self.context_sync()
 
     @classmethod
     def candyxml_parse(cls, element):

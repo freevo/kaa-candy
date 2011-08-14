@@ -31,6 +31,8 @@
 
 __all__ = [ 'Label' ]
 
+import re
+
 import widget
 from ..core import Color, Font
 
@@ -38,6 +40,9 @@ class Label(widget.Widget):
     candyxml_name = 'label'
     candy_backend = 'candy.Label'
     attributes = [ 'color', 'font', 'text' ]
+    context_sensitive = True
+
+    __text_regexp = re.compile('\$([a-zA-Z][a-zA-Z0-9_\.]*)|\${([^}]*)}')
 
     def __init__(self, pos=None, size=None, color=None, font=None, text='', context=None):
         """
@@ -56,6 +61,28 @@ class Label(widget.Widget):
         self.font = font
         self.text = text
 
+    @property
+    def text(self):
+        return self.__text
+
+    @text.setter
+    def text(self, text):
+        self.__text_provided = text
+        def replace_context(matchobj):
+            match = matchobj.groups()[0] or matchobj.groups()[1]
+            s = self.context.get(match, '')
+            if s is not None:
+                return unicode(s)
+            return ''
+        if self.context:
+            # we have a context, use it
+            text = re.sub(self.__text_regexp, replace_context, text)
+        self.__text = text
+        self.queue_rendering()
+
+    def context_sync(self):
+        self.text = self.__text_provided
+
     def calculate_intrinsic_size(self, size):
         """
         Calculate intrinsic size based on the parent's size
@@ -66,7 +93,7 @@ class Label(widget.Widget):
             self.font = self.font.get_font(self.height)
         width, height = self.font.get_width(self.text), self.font.get_height(Font.MAX_HEIGHT)
         if self.width and width > self.width and self.width > 0:
-            width = self.width, self.intrinsic_size[1]
+            width = self.width
         self.intrinsic_size = width, height
         return width, height
 

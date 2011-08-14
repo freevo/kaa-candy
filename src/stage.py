@@ -51,8 +51,11 @@ class Stage(object):
         self.initialized = False
         self.scale = None
 
-    def add(self, widget):
-        self.group.add(widget)
+    def add(self, *widgets):
+        self.group.add(*widgets)
+
+    def remove(self, *widgets):
+        self.group.remove(*widgets)
 
     def queue_rendering(self):
         """
@@ -70,6 +73,7 @@ class Stage(object):
             pass
         self._candy_dirty = False
         tasks = []
+        self.group.prepare_sync()
         while Widget._candy_sync_new:
             widget = Widget._candy_sync_new.pop(0)
             widget._candy_stage = self

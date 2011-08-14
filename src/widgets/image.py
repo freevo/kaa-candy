@@ -32,8 +32,11 @@
 __all__ = [ 'Image' ]
 
 import os
+import hashlib
 import tempfile
 
+import kaa
+import kaa.net.url
 import kaa.imlib2
 
 import widget
@@ -41,10 +44,14 @@ import widget
 class Image(widget.Widget):
     candyxml_name = 'image'
     candy_backend = 'candy.Imlib2Texture'
+
     attributes = [ 'data', 'modified', 'keep_aspect' ]
+    context_sensitive = True
 
     modified = False
     keep_aspect = False
+
+    _image_current_downloads = {}
 
     def __init__(self, pos=None, size=None, url=None, context=None):
         """
@@ -64,6 +71,9 @@ class Image(widget.Widget):
         """
         Calculate intrinsic size based on the parent's size
         """
+        if not self.__imagedata:
+            self.intrinsic_size = 0, 0
+            return 0, 0
         width, height = super(Image, self).calculate_intrinsic_size(size)
         if self.keep_aspect:
             aspect = float(self.__imagedata.width) / self.__imagedata.height
@@ -74,12 +84,11 @@ class Image(widget.Widget):
             self.intrinsic_size = width, height
         return width, height
 
-    def __sync__(self, tasks):
-        if self.modified:
-            # The modified flag is set. That also means the widget is
-            # already marked dirty. Therefore, it is save to play with
-            # self.data and self.modify without triggering the parent
-            # again.
+    def prepare_sync(self):
+        if not self.modified:
+            return False
+        self.data = None, (0, 0)
+        if self.__imagedata:
             fd, filename = tempfile.mkstemp(prefix='candy', dir='/dev/shm')
             try:
                 # write the image data to shm
@@ -88,9 +97,19 @@ class Image(widget.Widget):
             finally:
                 self.modified = False
                 os.close(fd)
-        # now we call the super.__sync__ which will reset the dirty
-        # flag and sync the data to the backend
-        super(Image, self).__sync__(tasks)
+        return True
+
+    def context_sync(self):
+        self.image = self.__image_provided
+
+    def _image_download_complete(self, status, cachefile):
+        """
+        Callback for HTTP GET result. The image should be in the
+        cachefile.
+        """
+        if cachefile in self._image_current_downloads:
+            del self._image_current_downloads[cachefile]
+        self.image = cachefile
 
     @property
     def image(self):
@@ -98,10 +117,45 @@ class Image(widget.Widget):
 
     @image.setter
     def image(self, image):
+        self.__image_provided = image
+        if image.startswith('$'):
+            # variable from the context, e.g. $varname
+            self.context_sensitive = True
+            image = self.context.get(image) or ''
+        else:
+            self.context_sensitive = False
         if isinstance(image, kaa.imlib2.Image):
             self.__imagedata = image
-        else:
-            self.__imagedata = kaa.imlib2.Image(image)
+            self.modified = True
+            return
+        # load image by url/filename
+        if image.startswith('http://'):
+            # remote image, create local cachefile
+            # FIXME: how to handle updates on the remote side?
+            base = hashlib.md5(image).hexdigest() + os.path.splitext(image)[1]
+            cachefile = kaa.tempfile('candy-images/' + base)
+            if not os.path.isfile(cachefile):
+                # Download the image
+                # FIXME: errors will be dropped
+                # FIXME: support other remote sources
+                # FIXME: use one thread (jobserver) for all downloads
+                #  or at least a max number of threads to make the individual
+                #  image loading faster
+                if not cachefile in self._image_current_downloads:
+                    tmpfile = kaa.tempfile('candy-images/.' + base)
+                    c = kaa.net.url.fetch(image, cachefile, tmpfile)
+                    self._image_current_downloads[cachefile] = c
+                self._image_current_downloads[cachefile].connect_weak_once(self._image_download_complete, cachefile)
+                image = None
+            else:
+                image = cachefile
+        try:
+            if image:
+                self.__imagedata = kaa.imlib2.Image(image)
+            else:
+                self.__imagedata = None
+        except Exception, e:
+            self.__imagedata = None
         self.modified = True
 
     @classmethod

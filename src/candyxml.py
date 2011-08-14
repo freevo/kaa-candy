@@ -73,7 +73,7 @@ class Template(object):
         :returns: widget object
         """
         if context is not None:
-            context = Context(context)
+            context = core.Context(context)
         args = self._kwargs.copy()
         args.update(kwargs)
         if self._cls.context_sensitive:
@@ -82,6 +82,9 @@ class Template(object):
         for modifier in self._modifier:
             widget = modifier.modify(widget)
         return widget
+
+    def __repr__(self):
+        return '<kaa.candy.Template for %s>' % self._cls
 
     @classmethod
     def candyxml_get_class(cls, element):
