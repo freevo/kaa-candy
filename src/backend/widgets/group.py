@@ -45,3 +45,11 @@ class Group(widget.Widget):
         """
         self.obj = clutter.Group()
         self.obj.show()
+
+    def update(self, modified):
+        if 'clip' in modified:
+            if self.clip:
+                (x, y), (width, height) = self.clip
+                self.obj.set_clip(x, y, width, height)
+            else:
+                self.obj.remove_clip()

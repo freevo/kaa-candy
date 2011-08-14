@@ -39,12 +39,6 @@ import group
 
 class Grid(group.Group):
 
-    def update(self, modified):
-        if 'item_area' in modified:
-            # FIXME: use the clip is a bad style, fading would be better
-            (x, y), (width, height) = self.item_area
-            self.obj.set_clip(x, y, width, height)
-
     def scroll(self, (x, y), secs):
         items = self.obj.get_children()[0]
         items.animate(clutter.EASE_OUT_CUBIC, int(secs * 1000) or 1, 'x', x, 'y', y)

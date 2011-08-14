@@ -41,8 +41,6 @@ class Grid(group.AbstractGroup):
     candy_backend = 'candy.Grid'
     context_sensitive = True
 
-    attributes = [ 'item_area' ]
-
     HORIZONTAL, VERTICAL =  range(2)
 
     fixed_size = True
@@ -109,8 +107,8 @@ class Grid(group.AbstractGroup):
         # list of rendered items
         self.item_widgets = {}
         # group of items
-        self.item_area = (x0, y0), (self.num_items_x * self.item_width - space_x, self.num_items_y * self.item_height - space_y)
         self.item_group = group.AbstractGroup((x0, y0))
+        self.clip = (x0, y0), (self.num_items_x * self.item_width - space_x, self.num_items_y * self.item_height - space_y)
         self.location = (0, 0)
         self.add(self.item_group)
         self.create_grid = None
@@ -186,8 +184,8 @@ class Grid(group.AbstractGroup):
         @param secs: runtime of the animation
         """
         self.location = (x, y)
-        pos_x = -x * self.item_width + self.item_area[0][0]
-        pos_y = -y * self.item_height + self.item_area[0][1]
+        pos_x = -x * self.item_width + self.clip[0][0]
+        pos_y = -y * self.item_height + self.clip[0][1]
         self.backend.scroll((pos_x, pos_y), secs)
         self.queue_rendering()
 

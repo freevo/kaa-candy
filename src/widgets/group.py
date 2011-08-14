@@ -6,6 +6,9 @@ from .. import core
 class AbstractGroup(widget.Widget):
 
     candy_backend = 'candy.Group'
+    attributes = [ 'clip' ]
+
+    clip = None
     fixed_size = False
 
     def __init__(self, pos=None, size=None, context=None):
