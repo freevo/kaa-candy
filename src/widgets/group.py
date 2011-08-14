@@ -111,6 +111,9 @@ class AbstractGroup(widget.Widget):
         for widget in widgets:
             widget.parent = None
 
+    def clear(self):
+        for widget in self.children[:]:
+            widget.parent = None
 
 class Group(AbstractGroup):
 
