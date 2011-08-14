@@ -54,8 +54,10 @@ def is_template(obj):
 
 class Context(dict):
 
-    def __init__(self, ctx):
-        super(Context, self).__init__(ctx.copy())
+    def __init__(self, ctx=None, **kwargs):
+        if ctx is not None:
+            super(Context, self).__init__(ctx.copy())
+        self.update(kwargs)
 
     def get(self, attr, default=None):
         if attr.startswith('$'):
