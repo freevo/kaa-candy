@@ -35,32 +35,12 @@
 __all__ = [ 'Label' ]
 
 import cairo
-import widget
+import image
 
 import clutter
 import core
 
-class Label(widget.Widget):
-
-    def create(self):
-        """
-        Create the clutter object
-        """
-        self.obj = clutter.CairoTexture(self.width, self.height)
-        self.obj.show()
-
-    def calculate_size(self):
-        fade = False
-        if self.font.size == 0:
-            # get font based on widget height
-            self.font = self.font.get_font(self.height)
-        # get widget width and height
-        width = self.font.get_width(self.text)
-        height = self.font.get_height(core.Font.MAX_HEIGHT)
-        if self.width and width > self.width:
-            fade = True
-            width = self.width
-        return int(width), int(height), fade
+class Label(image.CairoTexture):
 
     def update(self, modified):
         """
@@ -68,9 +48,6 @@ class Label(widget.Widget):
         """
         super(Label, self).update(modified)
         fade = self.font.get_width(self.text) > self.width
-        if self.width != self.obj.get_width() or self.height != self.obj.get_height():
-            self.obj.set_surface_size(int(self.width), int(self.height))
-        self.obj.clear()
         # draw new text string
         context = self.obj.cairo_create()
         context.set_operator(cairo.OPERATOR_SOURCE)
