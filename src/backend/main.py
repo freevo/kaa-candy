@@ -149,7 +149,10 @@ class Server(object):
         if queue:
             # sync with the clutter thread
             event = threading.Event()
-            gobject.idle_add(mainloop.sync, queue, event)
+            # FIXME: idle_add does not work when animations are
+            # running. It seems to be that clutter uses as much CPU
+            # time as possible, nothing is idle.
+            gobject.timeout_add(0, mainloop.sync, queue, event)
             event.wait()
 
     def cmd_import(self, name, path):
