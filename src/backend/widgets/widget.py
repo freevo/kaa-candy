@@ -34,6 +34,8 @@
 
 __all__ = [ 'Widget' ]
 
+import clutter
+
 class Widget(object):
 
     # clutter object
@@ -100,3 +102,9 @@ class Widget(object):
             self.obj.set_width(self.width)
         if 'height' in modified and self.height:
             self.obj.set_height(self.height)
+
+    def animate(self, ease, secs, *args):
+        # Note: it is not possible to stop or modify an animation
+        # right now. The result from this call has to go back to the
+        # main app somehow.
+        self.obj.animate(getattr(clutter, ease), int(secs * 1000) or 1, *args)

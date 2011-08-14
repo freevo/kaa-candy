@@ -171,6 +171,9 @@ class Widget(object):
         self.__intrinsic_size = self.__width, self.__height
         return self.__intrinsic_size
 
+    def animate(self, ease, secs, *args):
+        self.backend.animate(ease, secs, *args)
+
     @property
     def x(self):
         return self.__x

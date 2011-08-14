@@ -38,7 +38,6 @@ import group
 
 class Grid(group.AbstractGroup):
     candyxml_name = 'grid'
-    candy_backend = 'candy.Grid'
     context_sensitive = True
 
     HORIZONTAL, VERTICAL =  range(2)
@@ -186,7 +185,7 @@ class Grid(group.AbstractGroup):
         self.location = (x, y)
         pos_x = -x * self.item_width + self.clip[0][0]
         pos_y = -y * self.item_height + self.clip[0][1]
-        self.backend.scroll((pos_x, pos_y), secs)
+        self.item_group.animate('EASE_OUT_CUBIC', secs, 'x', pos_x, 'y', pos_y)
         self.queue_rendering()
 
     @classmethod
