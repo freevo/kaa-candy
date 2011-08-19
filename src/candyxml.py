@@ -34,6 +34,7 @@ __all__ = [ 'Template', 'parse', 'register', 'get_class' ]
 # python imports
 import os
 import logging
+import traceback
 import xml.sax
 
 # kaa.candy imports
@@ -78,7 +79,11 @@ class Template(object):
         args.update(kwargs)
         if self._cls.context_sensitive:
             args['context'] = context
-        widget = self._cls(**args)
+        try:
+            widget = self._cls(**args)
+        except Exception, e:
+            traceback.print_exc()
+            raise RuntimeError('unable to create %s%s: %s' % (self._cls, args.keys(), e))
         for modifier in self._modifier:
             widget = modifier.modify(widget)
         return widget
