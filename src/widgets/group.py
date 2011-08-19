@@ -61,10 +61,11 @@ class AbstractGroup(widget.Widget):
         """
         Calculate intrinsic size based on the parent's size
         """
-        super(AbstractGroup, self).calculate_intrinsic_size(size)
+        size = super(AbstractGroup, self).calculate_intrinsic_size(size)
         if self.fixed_size:
-            return self.width, self.height
-        size = self.width, self.height
+            for child in self.children:
+                child.calculate_intrinsic_size(size)
+            return size
         children_width = children_height = 0
         for child in self.children:
             if child.passive:
@@ -72,12 +73,13 @@ class AbstractGroup(widget.Widget):
             intrinsic_size = child.calculate_intrinsic_size(size)
             children_width = max(children_width, child.x + intrinsic_size[0])
             children_height = max(children_height, child.y + intrinsic_size[1])
-        self.intrinsic_size = children_width, children_height
         # now use that calculated size to set the geometry for the
         # passive children
         for child in self.children:
             if child.passive:
-                child.calculate_intrinsic_size(self.intrinsic_size)
+                child.calculate_intrinsic_size((children_width, children_height))
+        if self.variable_size:
+            self.intrinsic_size = intrinsic_size
         return self.intrinsic_size
 
     def get_widget(self, name):
