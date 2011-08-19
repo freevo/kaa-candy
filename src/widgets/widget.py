@@ -110,6 +110,8 @@ class Widget(object):
             self.queue_rendering()
 
     def __del__(self):
+        if not hasattr(self, '_beacon_id'):
+            return
         Widget._candy_sync_delete.append(self._candy_id)
         if self._candy_stage and not self._candy_stage._candy_dirty:
             self._candy_stage.queue_rendering()
@@ -290,6 +292,7 @@ class Widget(object):
         if not self in Widget._candy_sync_reparent:
             if parent:
                 parent.children.append(self)
+                parent.queue_rendering()
             Widget._candy_sync_reparent.append(self)
             self.queue_rendering()
 
