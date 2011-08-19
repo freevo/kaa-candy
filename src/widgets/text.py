@@ -79,6 +79,7 @@ class Text(widget.Widget):
         """
         width, height = super(Text, self).calculate_intrinsic_size(size)
         if self.__intrinsic_size_param == (width, height, self.text, self.font.name, self.font.size):
+            self.intrinsic_size = self.__intrinsic_size_cache
             return self.__intrinsic_size_cache
         # ugly hack: we need clutter to help us get the size we need
         obj = clutter.Text()
