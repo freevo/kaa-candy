@@ -45,6 +45,8 @@ class CairoTexture(widget.Widget):
     Cairo based Texture widget.
     """
 
+    width = height = 0
+
     def create(self):
         """
         Create the clutter object
