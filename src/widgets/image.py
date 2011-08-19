@@ -29,7 +29,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Image' ]
+__all__ = [ 'Image', 'resolve_image_url' ]
 
 import os
 import hashlib
@@ -40,6 +40,17 @@ import kaa.net.url
 import kaa.imlib2
 
 import widget
+
+def resolve_image_url(self, name):
+    """
+    Helper function to get the full path of the image.
+    @param name: image filename without path
+    """
+    for path in config.imagepath:
+        filename = os.path.join(path, name)
+        if os.path.isfile(filename):
+            return filename
+    return None
 
 class Image(widget.Widget):
     candyxml_name = 'image'
@@ -118,7 +129,7 @@ class Image(widget.Widget):
     @image.setter
     def image(self, image):
         self.__image_provided = image
-        if image.startswith('$'):
+        if image and image.startswith('$'):
             # variable from the context, e.g. $varname
             self.context_sensitive = True
             image = self.context.get(image) or ''
@@ -129,7 +140,7 @@ class Image(widget.Widget):
             self.modified = True
             return
         # load image by url/filename
-        if image.startswith('http://'):
+        if image and image.startswith('http://'):
             # remote image, create local cachefile
             # FIXME: how to handle updates on the remote side?
             base = hashlib.md5(image).hexdigest() + os.path.splitext(image)[1]
