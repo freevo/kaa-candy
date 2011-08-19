@@ -33,6 +33,12 @@ __all__ = [ 'Text' ]
 
 import re
 
+# we need to import clutter here to calculate the size. Clutter itself
+# is never initialized and its main loop is not started. If someone
+# knows a better way to get the intrinsic size, please change this.
+import pango
+import clutter
+
 import widget
 from ..core import Color, Font
 
@@ -40,7 +46,14 @@ class Text(widget.Widget):
     candyxml_name = 'text'
     candy_backend = 'candy.Text'
     attributes = [ 'color', 'font', 'text', 'align' ]
+    attribute_types = {
+        'color': Color,
+        'font': Font
+    }
     context_sensitive = True
+
+    __intrinsic_size_param = None
+    __intrinsic_size_cache = None
 
     def __init__(self, pos, size, text, font, color, align=None, context=None):
         """
@@ -59,6 +72,27 @@ class Text(widget.Widget):
         self.font = font
         self.text = text
         self.color = color
+
+    def calculate_intrinsic_size(self, size):
+        """
+        Calculate intrinsic size based on the parent's size
+        """
+        width, height = super(Text, self).calculate_intrinsic_size(size)
+        if self.__intrinsic_size_param == (width, height, self.text, self.font.name, self.font.size):
+            return self.__intrinsic_size_cache
+        # ugly hack: we need clutter to help us get the size we need
+        obj = clutter.Text()
+        obj.set_size(width, height)
+        obj.set_line_wrap(True)
+        obj.set_line_wrap_mode(pango.WRAP_WORD_CHAR)
+        obj.set_use_markup(True)
+        obj.set_font_name("%s %spx" % (self.font.name, self.font.size))
+        obj.set_text(self.text)
+        self.__intrinsic_size_cache = pango.units_to_double(obj.get_layout().get_size()[0]), \
+            pango.units_to_double(obj.get_layout().get_size()[1])
+        self.__intrinsic_size_param = (width, height, self.text, self.font.name, self.font.size)
+        self.intrinsic_size = self.__intrinsic_size_cache
+        return self.__intrinsic_size_cache
 
     @classmethod
     def candyxml_parse(cls, element):
