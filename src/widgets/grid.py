@@ -29,9 +29,11 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Grid' ]
+__all__ = [ 'Grid', 'SelectionGrid' ]
 
 import kaa
+
+from .. import core
 
 import widget
 import group
@@ -70,7 +72,7 @@ class Grid(group.AbstractGroup):
         self.items = items
         self.cell_item = cell_item
         self.template = template
-        self.spacing = spacing
+        self.item_padding = spacing
 
     def create_grid(self):
         """
@@ -80,34 +82,36 @@ class Grid(group.AbstractGroup):
         @todo: make it possible to change the layout during runtime
         """
         # do some calculations
-        if self.spacing is None:
+        if self.item_padding is None:
             # no spacing is given. Get the number of rows and cols
             # and device the remaining space as spacing and border
             self.num_items_x = int(self.width / self.cell_size[0])
             self.num_items_y = int(self.height / self.cell_size[1])
-            space_x = self.width / self.num_items_x - self.cell_size[0]
-            space_y = self.height / self.num_items_y - self.cell_size[1]
+            padding_x = self.width / self.num_items_x - self.cell_size[0]
+            padding_y = self.height / self.num_items_y - self.cell_size[1]
+            self.item_padding = padding_x, padding_y
             # size of cells
-            self.item_width = self.cell_size[0] + space_x
-            self.item_height = self.cell_size[1] + space_y
+            self.item_width = self.cell_size[0] + padding_x
+            self.item_height = self.cell_size[1] + padding_y
         else:
             # spacing is given, let's see how much we can fit into here
-            space_x, space_y = self.spacing
+            padding_x, padding_y = self.item_padding
             # size of cells
-            self.item_width = self.cell_size[0] + space_x
-            self.item_height = self.cell_size[1] + space_y
+            self.item_width = self.cell_size[0] + padding_x
+            self.item_height = self.cell_size[1] + padding_y
             # now that we know the sizes check how much items fit
             self.num_items_x = int(self.width / self.item_width)
             self.num_items_y = int(self.height / self.item_height)
         # we now center the grid by default
-        x0 = (self.width - self.num_items_x * self.item_width + space_x) / 2
-        y0 = (self.height - self.num_items_y * self.item_height + space_y) / 2
+        x0 = (self.width - self.num_items_x * self.item_width + padding_x) / 2
+        y0 = (self.height - self.num_items_y * self.item_height + padding_y) / 2
+        self.clip = (x0 - padding_x, y0 - padding_y), \
+            (self.num_items_x * self.item_width + padding_x, self.num_items_y * self.item_height + padding_y)
+        self.location = (0, 0)
         # list of rendered items
         self.item_widgets = {}
         # group of items
         self.item_group = group.AbstractGroup((x0, y0))
-        self.clip = (x0, y0), (self.num_items_x * self.item_width - space_x, self.num_items_y * self.item_height - space_y)
-        self.location = (0, 0)
         self.add(self.item_group)
         self.create_grid = None
 
@@ -130,6 +134,11 @@ class Grid(group.AbstractGroup):
         self.item_group.add(child)
         self.item_widgets[(pos_x, pos_y)] = child
         return child
+
+    def clear(self):
+        self.item_group.clear()
+        self.item_widgets = {}
+        self.queue_rendering()
 
     def prepare_sync(self):
         if self.create_grid:
@@ -161,9 +170,7 @@ class Grid(group.AbstractGroup):
         if self.__items != items:
             if self.__items:
                 # we already had a valid list of items.
-                self.item_group.clear()
-                self.item_widgets = {}
-                self.queue_rendering()
+                self.clear()
             self.__items = items
 
     @kaa.synchronized()
@@ -175,6 +182,8 @@ class Grid(group.AbstractGroup):
         @param secs: runtime of the animation
         """
         # This function will force grid creation
+        if self.create_grid:
+            self.create_grid()
         while not force:
             # check if it possible to go there
             if self.__orientation == Grid.HORIZONTAL:
@@ -202,9 +211,11 @@ class Grid(group.AbstractGroup):
         @param x, y: end row and col
         @param secs: runtime of the animation
         """
+        if self.create_grid:
+            self.create_grid()
         self.location = (x, y)
-        pos_x = -x * self.item_width + self.clip[0][0]
-        pos_y = -y * self.item_height + self.clip[0][1]
+        pos_x = -x * self.item_width + self.clip[0][0] + self.item_padding[0]
+        pos_y = -y * self.item_height + self.clip[0][1] + self.item_padding[1]
         self.item_group.animate('EASE_OUT_CUBIC', secs, 'x', pos_x, 'y', pos_y)
         self.queue_rendering()
 
@@ -234,3 +245,77 @@ class Grid(group.AbstractGroup):
             template=subelement.xmlcreate(), items=element.items,
             cell_size=(int(element.cell_width), int(element.cell_height)), cell_item=element.cell_item,
             orientation=orientation)
+
+
+
+class SelectionGrid(Grid):
+    """
+    Grid with selection widget.
+    @note: see C{test/flickr.py} for an example
+    """
+
+    candyxml_style = 'selection'
+
+    def __init__(self, pos, size, cell_size, cell_item, items, template,
+                 selection, orientation, spacing=None, context=None):
+        """
+        Simple grid widget to show the items based on the template.
+
+        @param pos: (x,y) position of the widget or None
+        @param size: (width,height) geometry of the widget.
+        @param cell_size: (width,height) of each cell
+        @param cell_item: string how the cell item should be added to the context
+        @param items: list of objects or object name in the context
+        @param template: child template for each cell
+        @param selection: widget for the selection
+        @param orientation: how to arange the grid: Grid.HORIZONTAL or Grid.VERTICAL
+        @param spacing: x,y values of space between two items. If set to None
+            the spacing will be calculated based on cell size and widget size
+        @param context: the context the widget is created in
+
+        """
+        super(SelectionGrid, self).__init__(pos, size, cell_size, cell_item, items,
+            template, orientation, spacing, context)
+        if core.is_template(selection):
+            selection = selection()
+        self.selection = selection
+
+    def clear(self):
+        super(SelectionGrid, self).clear()
+        self.item_group.add(self.selection)
+        
+    def select(self, (x, y), secs):
+        """
+        Select a cell.
+
+        @param x, y: cell position to select
+        @param secs: runtime of the animation
+        """
+        if self.create_grid:
+            self.create_grid()
+        pos_x = x * self.item_width + self.selection.grid_adjust_x
+        pos_y = y * self.item_height + self.selection.grid_adjust_y
+        self.selection.animate('EASE_OUT_CUBIC', secs, 'x', pos_x, 'y', pos_y)
+        self.queue_rendering()
+
+    def create_grid(self):
+        """
+        Setup the grid. After this function has has been called no modifications
+        to the grid are possible.
+
+        @todo: make it possible to change the layout during runtime
+        """
+        super(SelectionGrid, self).create_grid()
+        self.item_group.add(self.selection)
+        self.selection.grid_adjust_x = self.selection.x = (self.item_width - self.item_padding[0] - self.selection.width) / 2
+        self.selection.grid_adjust_y = self.selection.y = (self.item_height - self.item_padding[1] - self.selection.height) / 2
+
+    @classmethod
+    def candyxml_parse(cls, element):
+        selection = None
+        for child in element:
+            if child.node == 'selection':
+                selection = child[0].xmlcreate()
+                element.remove(child)
+        return super(SelectionGrid, cls).candyxml_parse(element).update(
+            selection=selection)
