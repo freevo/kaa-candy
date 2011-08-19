@@ -37,13 +37,13 @@ class Widget(object):
 
     candy_backend = 'candy.Widget'
     attributes = []
+    attribute_types = {}
 
     ALIGN_LEFT = 'left'
     ALIGN_RIGHT = 'right'
     ALIGN_TOP = 'top'
     ALIGN_BOTTOM = 'bottom'
     ALIGN_CENTER = 'center'
-    ALIGN_SHRINK = 'shrink'
 
     # internal class variables
     _candy_sync_new = []
@@ -105,6 +105,8 @@ class Widget(object):
         self.backend = BackendWrapper(self._candy_id)
 
     def __setattr__(self, attr, value):
+        if value and attr in self.attribute_types and not isinstance(value, self.attribute_types[attr]):
+            value = self.attribute_types[attr](value)
         super(Widget, self).__setattr__(attr, value)
         if not self._candy_dirty and (attr in self.attributes or attr in ['xalign', 'yalign']):
             self.queue_rendering()
@@ -198,7 +200,7 @@ class Widget(object):
 
     @property
     def width(self):
-        if self.__width == -1:
+        if self.__variable_width and not self.__intrinsic_size:
             # force calculation
             self.intrinsic_size
         return self.__width
@@ -220,7 +222,7 @@ class Widget(object):
 
     @property
     def height(self):
-        if self.__height == -1:
+        if self.__variable_height and not self.__intrinsic_size:
             # force calculation
             self.intrinsic_size
         return self.__height
@@ -259,6 +261,7 @@ class Widget(object):
 
     @intrinsic_size.setter
     def intrinsic_size(self, size):
+        self.__width, self.__height = size
         self.__intrinsic_size = size
 
     @property
@@ -284,6 +287,8 @@ class Widget(object):
 
     @parent.setter
     def parent(self, parent):
+        if parent == self.__parent:
+            return
         if not self in Widget._candy_sync_reparent:
             self.queue_rendering()
             if self.__parent:
