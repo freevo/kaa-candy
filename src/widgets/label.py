@@ -40,6 +40,10 @@ class Label(widget.Widget):
     candyxml_name = 'label'
     candy_backend = 'candy.Label'
     attributes = [ 'color', 'font', 'text' ]
+    attribute_types = {
+        'color': Color,
+        'font': Font
+    }
     context_sensitive = True
 
     __text_regexp = re.compile('\$([a-zA-Z][a-zA-Z0-9_\.]*)|\${([^}]*)}')

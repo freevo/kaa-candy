@@ -39,6 +39,11 @@ class Rectangle(widget.Widget):
     candy_backend = 'candy.Rectangle'
     attributes = [ 'color', 'border_size', 'border_color', 'radius' ]
 
+    attribute_types = {
+        'color': Color,
+        'border_color': Color
+    }
+
     def __init__(self, pos=None, size=None, color=None, border_size=0,
                  border_color=None, radius=0, context=None):
         """
