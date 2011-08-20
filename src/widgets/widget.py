@@ -6,7 +6,7 @@ import kaa.weakref
 
 from .. import candyxml, core
 
-next_candy_id = 1
+next_id = 1
 
 NOT_SET = object()
 
@@ -52,6 +52,7 @@ class Widget(object):
     _candy_sync_reparent = []
 
     # internal object variables
+    _candy_id = None
     _candy_dirty = True
     _candy_stage = None
 
@@ -72,9 +73,6 @@ class Widget(object):
     reference_x = 'parent'
     reference_y = 'parent'
 
-    #: set if the object reacts on context
-    context_sensitive = False
-
     # the geometry values depend on some internal calculations.
     # Therefore, they are hidden using properties.
     __x = 0
@@ -94,9 +92,9 @@ class Widget(object):
     yalign = None
 
     def __init__(self, pos=None, size=None, context=None):
-        global next_candy_id
-        self._candy_id = next_candy_id
-        next_candy_id += 1
+        global next_id
+        self._candy_id = next_id
+        next_id += 1
         if pos is not None:
             self.x, self.y = pos
         if size is not None:
@@ -150,9 +148,6 @@ class Widget(object):
         self._candy_dirty = False
         return True
 
-    def prepare_sync(self):
-        return self._candy_dirty
-
     def queue_rendering(self):
         """
         Queue sync
@@ -166,6 +161,9 @@ class Widget(object):
             parent.queue_rendering()
         return False
 
+    def sync_context(self):
+        pass
+
     def sync_layout(self, (width, height)):
         """
         Sync layout changes and calculate intrinsic size based on the
@@ -176,6 +174,9 @@ class Widget(object):
         if self.__variable_height:
             self.__height = int((height * self.__variable_height) / 100)
         self.__intrinsic_size = self.__width, self.__height
+
+    def sync_prepare(self):
+        return self._candy_dirty
 
     def animate(self, ease, secs, *args):
         self.backend.animate(ease, secs, *args)
@@ -209,6 +210,7 @@ class Widget(object):
 
     @width.setter
     def width(self, width):
+        self.__intrinsic_size = None
         if isinstance(width, (str, unicode)):
             # use percent values provided by the string
             self.__variable_width = int(width[:-1])
@@ -231,6 +233,7 @@ class Widget(object):
 
     @height.setter
     def height(self, height):
+        self.__intrinsic_size = None
         if isinstance(height, (str, unicode)):
             # use percent values provided by the string
             self.__variable_height = int(height[:-1])
@@ -302,17 +305,16 @@ class Widget(object):
             Widget._candy_sync_reparent.append(self)
             self.queue_rendering()
 
-    def context_sync(self):
-        pass
-
     @property
     def context(self):
         return self.__context
 
     @context.setter
     def context(self, context):
+        if not isinstance(context, core.Context):
+            context = core.Context(context)
         self.__context = context
-        self.context_sync()
+        self.sync_context()
 
     @classmethod
     def candyxml_parse(cls, element):

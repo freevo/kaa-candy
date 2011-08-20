@@ -77,8 +77,7 @@ class Template(object):
             context = core.Context(context)
         args = self._kwargs.copy()
         args.update(kwargs)
-        if self._cls.context_sensitive:
-            args['context'] = context
+        args['context'] = context
         try:
             widget = self._cls(**args)
             widget.__template__ = self

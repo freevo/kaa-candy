@@ -50,7 +50,6 @@ class Text(widget.Widget):
         'color': Color,
         'font': Font
     }
-    context_sensitive = True
 
     __intrinsic_size_param = None
     __intrinsic_size_cache = None

@@ -57,7 +57,6 @@ class Image(widget.Widget):
     candy_backend = 'candy.Imlib2Texture'
 
     attributes = [ 'data', 'modified', 'keep_aspect' ]
-    context_sensitive = True
 
     modified = False
     keep_aspect = False
@@ -78,6 +77,9 @@ class Image(widget.Widget):
         super(Image, self).__init__(pos, size, context)
         self.image = url
 
+    def sync_context(self):
+        self.image = self.__image_provided
+
     def sync_layout(self, size):
         """
         Sync layout changes and calculate intrinsic size based on the
@@ -96,7 +98,7 @@ class Image(widget.Widget):
                 width = int(height * aspect)
             self.intrinsic_size = width, height
 
-    def prepare_sync(self):
+    def sync_prepare(self):
         if not self.modified:
             return False
         self.data = None, (0, 0)
@@ -110,9 +112,6 @@ class Image(widget.Widget):
                 self.modified = False
                 os.close(fd)
         return True
-
-    def context_sync(self):
-        self.image = self.__image_provided
 
     def _image_download_complete(self, status, cachefile):
         """
@@ -132,10 +131,7 @@ class Image(widget.Widget):
         self.__image_provided = image
         if image and image.startswith('$'):
             # variable from the context, e.g. $varname
-            self.context_sensitive = True
             image = self.context.get(image) or ''
-        else:
-            self.context_sensitive = False
         if isinstance(image, kaa.imlib2.Image):
             self.__imagedata = image
             self.modified = True

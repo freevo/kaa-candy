@@ -40,7 +40,6 @@ import group
 
 class Grid(group.AbstractGroup):
     candyxml_name = 'grid'
-    context_sensitive = True
 
     HORIZONTAL, VERTICAL =  range(2)
 
@@ -138,10 +137,10 @@ class Grid(group.AbstractGroup):
         self.item_widgets = {}
         self.queue_rendering()
 
-    def prepare_sync(self):
+    def sync_prepare(self):
         if self.create_grid:
             self.create_grid()
-        if not super(Grid, self).prepare_sync():
+        if not super(Grid, self).sync_prepare():
             return False
         if self.__orientation == Grid.VERTICAL:
             max_x, max_y = self.location
@@ -150,9 +149,9 @@ class Grid(group.AbstractGroup):
                     item_num = x + y * self.num_items_x
                     if not (x, y) in self.item_widgets:
                         self.create_item(item_num, x, y)
-        return super(Grid, self).prepare_sync()
+        return super(Grid, self).sync_prepare()
 
-    def context_sync(self):
+    def sync_context(self):
         self.items = self.__items_provided
 
     @property

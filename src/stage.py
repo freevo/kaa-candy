@@ -84,7 +84,7 @@ class Stage(object):
             pass
         self._candy_dirty = False
         tasks = []
-        self.group.prepare_sync()
+        self.group.sync_prepare()
         while Widget._candy_sync_new:
             widget = Widget._candy_sync_new.pop(0)
             widget._candy_stage = self

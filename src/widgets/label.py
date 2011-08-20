@@ -44,7 +44,6 @@ class Label(widget.Widget):
         'color': Color,
         'font': Font
     }
-    context_sensitive = True
 
     __text_regexp = re.compile('\$([a-zA-Z][a-zA-Z0-9_\.]*)|\${([^}]*)}')
 
@@ -84,7 +83,7 @@ class Label(widget.Widget):
         self.__text = text
         self.queue_rendering()
 
-    def context_sync(self):
+    def sync_context(self):
         self.text = self.__text_provided
 
     def sync_layout(self, size):

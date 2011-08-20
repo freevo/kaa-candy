@@ -24,18 +24,17 @@ class AbstractGroup(widget.Widget):
             child.__sync__(tasks)
         return True
 
-    def prepare_sync(self):
-        if not super(AbstractGroup, self).prepare_sync():
+    def sync_prepare(self):
+        if not super(AbstractGroup, self).sync_prepare():
             return False
         for child in self.children:
-            child.prepare_sync()
+            child.sync_prepare()
         return True
 
-    def context_sync(self):
+    def sync_context(self):
         context = self.context
         for child in self.children:
-            if child.context_sensitive:
-                child.context = context
+            child.context = context
 
     def queue_rendering(self):
         """
@@ -130,10 +129,11 @@ class AbstractGroup(widget.Widget):
         for widget in self.children[:]:
             widget.parent = None
 
+
+
 class Group(AbstractGroup):
 
     candyxml_name = 'group'
-    context_sensitive = True
 
     def __init__(self, pos=None, size=None, widgets=[], dependency=None, context=None):
         super(Group, self).__init__(pos, size, context)
