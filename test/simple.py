@@ -21,7 +21,7 @@ Text
         <group name="g2" x="10" y="300">
             <rectangle x="10" width="100%" y="10" height="100%" color="0x08cccccc" radius="50"
                border_size="5" border_color="0xffffff">
-                <properties passive="True"/>
+                <properties reference_x="siblings" reference_y="siblings"/>
             </rectangle>
             <rectangle x="20" width="100" height="100" color="0xffff00" radius="50"
                border_size="5" border_color="0xffffff"/>
@@ -29,11 +29,13 @@ Text
         <group name="g3">
             <properties xalign="center" yalign="bottom"/>
             <rectangle x="10" width="100%" y="10" height="100%" color="0x05cccccc">
-                <properties passive="True"/>
+                <properties reference_x="siblings" reference_y="siblings"/>
             </rectangle>
-            <label x="20" y="20" color="0x000000" font="Vera:24">highlight</label>
+            <label x="20" y="20" color="0x000000" font="Vera:24">highlight
+                <properties xalign="shrink" yalign="shrink"/>
+            </label>
         </group>
-        <image y="400" url="logo.png" width="200" height="200">
+        <image y="400" url="test/logo.png" width="200" height="200">
             <properties keep_aspect="True" yalign="center"/>
         </image>
     </group>
