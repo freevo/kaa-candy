@@ -9,7 +9,6 @@ class AbstractGroup(widget.Widget):
     attributes = [ 'clip' ]
 
     clip = None
-    fixed_size = False
 
     def __init__(self, pos=None, size=None, context=None):
         super(AbstractGroup, self).__init__(pos, size, context)
@@ -57,30 +56,44 @@ class AbstractGroup(widget.Widget):
             if child.variable_size and not child._candy_dirty:
                 child.queue_rendering()
 
-    def calculate_intrinsic_size(self, size):
+    def sync_layout(self, size):
         """
-        Calculate intrinsic size based on the parent's size
+        Sync layout changes and calculate intrinsic size based on the
+        parent's size.
         """
-        size = super(AbstractGroup, self).calculate_intrinsic_size(size)
-        if self.fixed_size:
-            for child in self.children:
-                child.calculate_intrinsic_size(size)
-            return size
+        super(AbstractGroup, self).sync_layout(size)
         children_width = children_height = 0
         for child in self.children:
-            if child.passive:
-                continue
-            intrinsic_size = child.calculate_intrinsic_size(size)
-            children_width = max(children_width, child.x + intrinsic_size[0])
-            children_height = max(children_height, child.y + intrinsic_size[1])
+            intrinsic_size = child.sync_layout(self.size)
+            if child.reference_x != 'parent':
+                # ignore this child and calculate this later when we
+                # know more about the children
+                pass
+            elif child.xalign == widget.Widget.ALIGN_SHRINK:
+                # auto shrink, use intrinsic size
+                children_width = max(children_width, child.x + child.intrinsic_size[0])
+            else:
+                # use defined width
+                children_width = max(children_width, child.x + child.width)
+            if child.reference_y != 'parent':
+                # ignore this child and calculate this later when we
+                # know more about the children
+                pass
+            elif child.yalign == widget.Widget.ALIGN_SHRINK:
+                # auto shrink, use intrinsic size
+                children_height = max(children_height, child.y + child.intrinsic_size[1])
+            else:
+                # use defined height
+                children_height = max(children_height, child.y + child.height)
+        self.intrinsic_size = children_width, children_height
         # now use that calculated size to set the geometry for the
-        # passive children
+        # children with their size based on the siblings.
         for child in self.children:
-            if child.passive:
-                child.calculate_intrinsic_size((children_width, children_height))
-        if self.variable_size:
-            self.intrinsic_size = intrinsic_size
-        return self.intrinsic_size
+            if child.reference_x == 'parent' and child.reference_y == 'parent':
+                continue
+            width = children_width if child.reference_x != 'parent' else self.size[0]
+            height = children_height if child.reference_y != 'parent' else self.size[1]
+            child.sync_layout((width, height))
 
     def get_widget(self, name):
         """

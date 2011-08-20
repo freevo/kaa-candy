@@ -53,7 +53,7 @@ class Template(object):
     #: class is a template class
     __is_template__ = True
 
-    def __init__(self, cls, **kwargs):
+    def __init__(self, cls, name, **kwargs):
         """
         Create a template for the given class
 
@@ -63,7 +63,7 @@ class Template(object):
         self._cls = cls
         self._modifier = kwargs.pop('modifier', [])
         self._kwargs = kwargs
-        self.userdata = {}
+        self.name = name
 
     def __call__(self, context=None, **kwargs):
         """
@@ -81,6 +81,8 @@ class Template(object):
             args['context'] = context
         try:
             widget = self._cls(**args)
+            widget.__template__ = self
+            widget.name = self.name
         except Exception, e:
             traceback.print_exc()
             raise RuntimeError('unable to create %s%s: %s' % (self._cls, args.keys(), e))
@@ -116,7 +118,7 @@ class Template(object):
         kwargs = widget.candyxml_parse(element)
         if modifier:
             kwargs['modifier'] = modifier
-        template = cls(widget, **kwargs)
+        template = cls(widget, name=kwargs.candyname, **kwargs)
         return template
 
 

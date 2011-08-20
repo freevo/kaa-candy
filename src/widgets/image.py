@@ -78,14 +78,16 @@ class Image(widget.Widget):
         super(Image, self).__init__(pos, size, context)
         self.image = url
 
-    def calculate_intrinsic_size(self, size):
+    def sync_layout(self, size):
         """
-        Calculate intrinsic size based on the parent's size
+        Sync layout changes and calculate intrinsic size based on the
+        parent's size.
         """
         if not self.__imagedata:
             self.intrinsic_size = 0, 0
             return 0, 0
-        width, height = super(Image, self).calculate_intrinsic_size(size)
+        super(Image, self).sync_layout(size)
+        width, height = self.size
         if self.keep_aspect:
             aspect = float(self.__imagedata.width) / self.__imagedata.height
             if int(height * aspect) > width:
@@ -93,7 +95,6 @@ class Image(widget.Widget):
             else:
                 width = int(height * aspect)
             self.intrinsic_size = width, height
-        return width, height
 
     def prepare_sync(self):
         if not self.modified:

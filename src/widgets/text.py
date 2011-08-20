@@ -73,11 +73,13 @@ class Text(widget.Widget):
         self.text = text
         self.color = color
 
-    def calculate_intrinsic_size(self, size):
+    def sync_layout(self, size):
         """
-        Calculate intrinsic size based on the parent's size
+        Sync layout changes and calculate intrinsic size based on the
+        parent's size.
         """
-        width, height = super(Text, self).calculate_intrinsic_size(size)
+        super(Text, self).sync_layout(size)
+        width, height = self.size
         if self.__intrinsic_size_param == (width, height, self.text, self.font.name, self.font.size):
             self.intrinsic_size = self.__intrinsic_size_cache
             return self.__intrinsic_size_cache

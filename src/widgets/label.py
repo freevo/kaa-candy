@@ -87,11 +87,12 @@ class Label(widget.Widget):
     def context_sync(self):
         self.text = self.__text_provided
 
-    def calculate_intrinsic_size(self, size):
+    def sync_layout(self, size):
         """
-        Calculate intrinsic size based on the parent's size
+        Sync layout changes and calculate intrinsic size based on the
+        parent's size.
         """
-        super(Label, self).calculate_intrinsic_size(size)
+        super(Label, self).sync_layout(size)
         if self.font.size == 0:
             # FIXME: wrong when the widget size changes
             self.font = self.font.get_font(self.height)
@@ -99,7 +100,6 @@ class Label(widget.Widget):
         if self.width and width > self.width and self.width > 0:
             width = self.width
         self.intrinsic_size = width, height
-        return width, height
 
     @classmethod
     def candyxml_parse(cls, element):

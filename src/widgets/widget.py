@@ -44,6 +44,7 @@ class Widget(object):
     ALIGN_TOP = 'top'
     ALIGN_BOTTOM = 'bottom'
     ALIGN_CENTER = 'center'
+    ALIGN_SHRINK = 'shrink'
 
     # internal class variables
     _candy_sync_new = []
@@ -64,11 +65,12 @@ class Widget(object):
     #: template for object creation
     __template__ = candyxml.Template
 
-    # passive widgets with dynamic size depend on the size of the
-    # other widgets in a container. Changing a widget from active to
-    # passive and the other way around is not allowed once the widget
-    # is visible.
-    passive = False
+    # widgets with dynamic size depend on the size of the paent or
+    # other widgets in a group based on the reference setting.
+    # Possible values are 'parent' based on the parents geometry and
+    # 'siblings' based on its siblings.
+    reference_x = 'parent'
+    reference_y = 'parent'
 
     #: set if the object reacts on context
     context_sensitive = False
@@ -164,16 +166,16 @@ class Widget(object):
             parent.queue_rendering()
         return False
 
-    def calculate_intrinsic_size(self, (width, height)):
+    def sync_layout(self, (width, height)):
         """
-        Calculate intrinsic size based on the parent's size
+        Sync layout changes and calculate intrinsic size based on the
+        parent's size.
         """
         if self.__variable_width:
             self.__width = int((width * self.__variable_width) / 100)
         if self.__variable_height:
             self.__height = int((height * self.__variable_height) / 100)
         self.__intrinsic_size = self.__width, self.__height
-        return self.__intrinsic_size
 
     def animate(self, ease, secs, *args):
         self.backend.animate(ease, secs, *args)
@@ -201,7 +203,7 @@ class Widget(object):
     @property
     def width(self):
         if self.__variable_width and not self.__intrinsic_size:
-            # force calculation
+            # start intrinsic size calculations
             self.intrinsic_size
         return self.__width
 
@@ -223,7 +225,7 @@ class Widget(object):
     @property
     def height(self):
         if self.__variable_height and not self.__intrinsic_size:
-            # force calculation
+            # start intrinsic size calculations
             self.intrinsic_size
         return self.__height
 
@@ -256,12 +258,11 @@ class Widget(object):
             if (self.__variable_width or self.__variable_height) and not self.parent.__intrinsic_size:
                 self.parent.intrinsic_size
             else:
-                self.calculate_intrinsic_size(self.parent.size)
+                self.sync_layout(self.parent.size)
         return self.__intrinsic_size
 
     @intrinsic_size.setter
     def intrinsic_size(self, size):
-        self.__width, self.__height = size
         self.__intrinsic_size = size
 
     @property
@@ -334,4 +335,5 @@ class Widget(object):
                 else:
                     parameter[str(child.use_as)] = widget
                 element.remove(child)
+        parameter.candyname = element.name
         return parameter

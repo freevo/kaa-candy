@@ -44,8 +44,6 @@ class Grid(group.AbstractGroup):
 
     HORIZONTAL, VERTICAL =  range(2)
 
-    fixed_size = True
-
     __items = None
 
     def __init__(self, pos, size, cell_size, cell_item, items, template,
