@@ -40,8 +40,9 @@ import kaa.net.url
 import kaa.imlib2
 
 import widget
+from .. import config
 
-def resolve_image_url(self, name):
+def resolve_image_url(name):
     """
     Helper function to get the full path of the image.
     @param name: image filename without path
@@ -157,12 +158,15 @@ class Image(widget.Widget):
                 image = None
             else:
                 image = cachefile
+        if image and not image.startswith('/'):
+            image = resolve_image_url(image)
         try:
             if image:
                 self.__imagedata = kaa.imlib2.Image(image)
             else:
                 self.__imagedata = None
         except Exception, e:
+            print 'unable to load', image
             self.__imagedata = None
         self.modified = True
 
