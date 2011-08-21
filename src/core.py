@@ -274,8 +274,6 @@ class Properties(dict, Modifier):
             elif key in ('keep_aspect',):
                 value = value.lower() in ('yes', 'true')
             elif key in ('scale','anchor_point'):
-                value = [ float(x) for x in value.split(',') ]
-                value = int(value[0] * element.get_scale_factor()[0]), \
-                        int(value[1] * element.get_scale_factor()[1])
+                value = [ int(x) for x in value.split(',') ]
             properties[key] = value
         return properties
