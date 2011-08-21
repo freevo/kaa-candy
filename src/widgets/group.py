@@ -15,7 +15,8 @@ class AbstractGroup(widget.Widget):
         self.children = []
 
     def __del__(self):
-        del self.children
+        if hasattr(self, 'children'):
+            del self.children
         super(AbstractGroup, self).__del__()
 
     def __sync__(self, tasks):
@@ -152,15 +153,21 @@ class Group(AbstractGroup):
                 <child_widget2/>
             </group>
         """
+        parameter = super(Group, cls).candyxml_parse(element)
         dependency=(element.depends or '').split(' ')
         while '' in dependency:
             dependency.remove('')
-        parameter = super(Group, cls).candyxml_parse(element).update(dependency=dependency)
+        if dependency:
+            parameter.update(dependency=dependency)
         widgets = []
         for child in element:
-            widget = child.xmlcreate()
+            try:
+                widget = child.xmlcreate()
+            except Exception, e:
+                print 'unable to parse %s: %s' % (child.node, e)
+                continue
             if not widget:
-                log.error('unable to parse %s', child.node)
-            else:
-                widgets.append(widget)
+                print 'unable to parse %s' % child.node
+                continue
+            widgets.append(widget)
         return parameter.update(widgets=widgets)
