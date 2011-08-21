@@ -37,10 +37,10 @@ from kaa.utils import property
 # kaa.candy imports
 from ..core import is_template
 from rectangle import Rectangle
-from group import Group
+from group import AbstractGroup
 from widget import Widget
 
-class Progressbar(Group):
+class Progressbar(AbstractGroup):
     """
     Widget showing a progressbar. Only the bar is drawn, the border has
     to be created ouside this widget.
@@ -50,8 +50,8 @@ class Progressbar(Group):
     __max = 0
     __progress = 0
 
-    def __init__(self, pos=None, size=None, progress=None):
-        super(Progressbar, self).__init__(pos, size)
+    def __init__(self, pos=None, size=None, progress=None, context=None):
+        super(Progressbar, self).__init__(pos, size, context)
         if is_template(progress):
             progress = progress()
         if progress is None:
