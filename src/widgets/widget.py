@@ -1,5 +1,5 @@
 
-__all__ = [ 'Widget' ]
+__all__ = [ 'XMLdict', 'Widget' ]
 
 import kaa
 import kaa.weakref
@@ -10,12 +10,17 @@ next_id = 1
 
 NOT_SET = object()
 
-class _dict(dict):
+class XMLdict(dict):
     """
     XML parser dict helper class.
     """
+    candyname = None
     def update(self, **kwargs):
-        super(_dict, self).update(**kwargs)
+        super(XMLdict, self).update(**kwargs)
+        return self
+    def remove(self, *args):
+        for arg in args:
+            self.pop(arg)
         return self
 
 class BackendWrapper(object):
@@ -328,7 +333,7 @@ class Widget(object):
 
         This will return a dictionary with pos, size, and content.
         """
-        parameter = _dict(pos=element.pos, size=(element.width, element.height))
+        parameter = XMLdict(pos=element.pos, size=(element.width, element.height))
         for child in element:
             if child.use_as:
                 widget = child.xmlcreate()
