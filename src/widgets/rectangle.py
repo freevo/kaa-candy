@@ -1,17 +1,19 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# rectangle.py - Rectangle Widget
+# rectangle.py - rectangle widget
 # -----------------------------------------------------------------------------
-# $Id: rectangle.py 3763 2009-01-10 19:56:30Z dmeyer $
+# $Id:$
 #
 # -----------------------------------------------------------------------------
-# kaa-candy - Third generation Canvas System using Clutter as backend
-# Copyright (C) 2008-2011 Dirk Meyer, Jason Tackaberry
+# kaa-candy - Fourth generation Canvas System using Clutter as backend
+# Copyright (C) 2011 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
 #
-# Please see the file AUTHORS for a complete list of authors.
+# Based on various previous attempts to create a canvas system for
+# Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
+# AUTHORS for a complete list of authors.
 #
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version
@@ -31,10 +33,10 @@
 
 __all__ = [ 'Rectangle' ]
 
-import widget
+from widget import Widget
 from ..core import Color
 
-class Rectangle(widget.Widget):
+class Rectangle(Widget):
     candyxml_name = 'rectangle'
     candy_backend = 'candy.Rectangle'
     attributes = [ 'color', 'border_size', 'border_color', 'radius' ]

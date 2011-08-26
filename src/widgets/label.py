@@ -1,17 +1,19 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# label.py - label widget
+# label.py - text label widget
 # -----------------------------------------------------------------------------
-# $Id: $
+# $Id:$
 #
 # -----------------------------------------------------------------------------
-# kaa-candy - Third generation Canvas System using Clutter as backend
-# Copyright (C) 2008-2011 Dirk Meyer, Jason Tackaberry
+# kaa-candy - Fourth generation Canvas System using Clutter as backend
+# Copyright (C) 2011 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
 #
-# Please see the file AUTHORS for a complete list of authors.
+# Based on various previous attempts to create a canvas system for
+# Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
+# AUTHORS for a complete list of authors.
 #
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version
@@ -31,12 +33,17 @@
 
 __all__ = [ 'Label' ]
 
+# python
 import re
 
-import widget
+# kaa.candy imports
+from widget import Widget
 from ..core import Color, Font
 
-class Label(widget.Widget):
+class Label(Widget):
+    """
+    Text label widget
+    """
     candyxml_name = 'label'
     candy_backend = 'candy.Label'
     attributes = [ 'color', 'font', 'text' ]
@@ -46,6 +53,7 @@ class Label(widget.Widget):
     }
 
     __text_regexp = re.compile('\$([a-zA-Z][a-zA-Z0-9_\.]*)|\${([^}]*)}')
+    __text = None
 
     def __init__(self, pos=None, size=None, color=None, font=None, text='', context=None):
         """
@@ -80,10 +88,15 @@ class Label(widget.Widget):
         if self.context:
             # we have a context, use it
             text = re.sub(self.__text_regexp, replace_context, text)
+        if self.__text == text:
+            return
         self.__text = text
         self.queue_rendering()
 
     def sync_context(self):
+        """
+        Adjust to a new context
+        """
         self.text = self.__text_provided
 
     def sync_layout(self, size):

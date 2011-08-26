@@ -10,13 +10,15 @@
 # thread.
 #
 # -----------------------------------------------------------------------------
-# kaa-candy - Third generation Canvas System using Clutter as backend
-# Copyright (C) 2011 Dirk Meyer, Jason Tackaberry
+# kaa-candy - Fourth generation Canvas System using Clutter as backend
+# Copyright (C) 2011 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
 #
-# Please see the file AUTHORS for a complete list of authors.
+# Based on various previous attempts to create a canvas system for
+# Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
+# AUTHORS for a complete list of authors.
 #
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version
@@ -100,7 +102,7 @@ class Mainloop(object):
         event.set()
         return False
 
-
+# global mainloop object
 mainloop = Mainloop()
 
 class Server(object):
@@ -122,12 +124,17 @@ class Server(object):
         Callback when the main app connects to the backend
         """
         client.signals['closed'].connect_once(self.ipc_disconnected)
+        self.ipc = client
 
     def ipc_disconnected(self):
         """
         Callback when the main app disconnects from the backend
         """
         sys.exit(0)
+
+    @kaa.threaded(kaa.MAINTHREAD)
+    def send_event(self, event, *args):
+        self.ipc.rpc('event_%s' % event.replace('-', '_'), *args)
 
     @kaa.rpc.expose()
     def sync(self, tasks):
@@ -166,6 +173,7 @@ class Server(object):
         command for sync: add a new widget based on cls with the given wid
         """
         self.widgets[wid] = eval(cls)()
+        self.widgets[wid].server = self
         return self.widgets[wid].create, ()
 
     def cmd_call(self, wid, cmd, args):

@@ -1,17 +1,19 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# thumbnail.py - kaa.beacon.Thumbnail Widget
+# thumbnail.py - thumbnail widget for kaa.beacon thumbnail objects
 # -----------------------------------------------------------------------------
 # $Id:$
 #
 # -----------------------------------------------------------------------------
-# kaa-candy - Third generation Canvas System using Clutter as backend
-# Copyright (C) 2008-2011 Dirk Meyer, Jason Tackaberry
+# kaa-candy - Fourth generation Canvas System using Clutter as backend
+# Copyright (C) 2011 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
 #
-# Please see the file AUTHORS for a complete list of authors.
+# Based on various previous attempts to create a canvas system for
+# Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
+# AUTHORS for a complete list of authors.
 #
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version
@@ -31,15 +33,8 @@
 
 __all__ = [ 'Thumbnail' ]
 
-import os
-import hashlib
-import tempfile
-
-import kaa
-import kaa.net.url
-import kaa.imlib2
-
-import widget
+# kaa.candy imports
+from widget import Widget
 from image import Image, resolve_image_url
 
 class Thumbnail(Image):
@@ -63,6 +58,11 @@ class Thumbnail(Image):
         self.set_thumbnail(thumbnail, default)
 
     def set_thumbnail(self, thumbnail, default=None):
+        """
+        Set the thumbnail and a default if the thumbnail is invalid
+        """
+        self.__thumbnail_provided = thumbnail
+        self.__default_provided = default
         if isinstance(thumbnail, (str, unicode)):
             # get thumbnail from context
             # FIXME: make this dynamic
@@ -73,25 +73,30 @@ class Thumbnail(Image):
             # thumbnail is a kaa.beacon.Item
             item, thumbnail = thumbnail, thumbnail.get('thumbnail')
         self._thumbnail = thumbnail
-        if self._thumbnail is not None:
-            # show thumbnail
-            self.show_thumbnail(force=True)
-            return
         if default and not default.startswith('/'):
             default = resolve_image_url(default)
         if default:
             self.image = default
-        if item is not None and not item.scanned:
+        if self._thumbnail is not None:
+            # show thumbnail
+            self.on_thumbnail_ready(force=True)
+        elif item is not None and not item.scanned:
             scanning = item.scan()
             if scanning:
-                scanning.connect_weak_once(self.beacon_update, item)
+                scanning.connect_weak_once(self.on_beacon_update, item)
 
-    def beacon_update(self, changes, item):
+    def sync_context(self):
+        """
+        Adjust to a new context
+        """
+        self.set_thumbnail(self.__thumbnail_provided, self.__default_provided)
+
+    def on_beacon_update(self, changes, item):
         self._thumbnail = item.get('thumbnail')
         if self._thumbnail is not None:
-            return self.show_thumbnail(force=True)
+            return self.on_thumbnail_ready(force=True)
 
-    def show_thumbnail(self, force=False):
+    def on_thumbnail_ready(self, force=False):
         """
         Callback to render the thumbnail to the texture.
         @todo: add thumbnail update based on beacon mtime
@@ -110,7 +115,7 @@ class Thumbnail(Image):
             # to low. This is exactly what we want. The create will be
             # scheduled in the mainloop but since we do not wait it is ok.
             self._thumbnail.create(self._thumbnail.PRIORITY_HIGH).\
-                connect_weak_once(self.show_thumbnail)
+                connect_weak_once(self.on_thumbnail_ready)
 
     @classmethod
     def candyxml_parse(cls, element):
@@ -120,5 +125,5 @@ class Thumbnail(Image):
         The thumbnail parameter must be a string that will be evaluated based
         on the given context.
         """
-        return widget.Widget.candyxml_parse(element).update(
+        return Widget.candyxml_parse(element).update(
             thumbnail=element.thumbnail, default=element.default)

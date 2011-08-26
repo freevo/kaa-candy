@@ -1,6 +1,6 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# core.py - Helper classes and decorator
+# core.py - Core classes
 # -----------------------------------------------------------------------------
 # $Id$
 #
@@ -10,13 +10,15 @@
 # effects.
 #
 # -----------------------------------------------------------------------------
-# kaa-candy - Third generation Canvas System using Clutter as backend
-# Copyright (C) 2008-2011 Dirk Meyer, Jason Tackaberry
+# kaa-candy - Fourth generation Canvas System using Clutter as backend
+# Copyright (C) 2011 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
 #
-# Please see the file AUTHORS for a complete list of authors.
+# Based on various previous attempts to create a canvas system for
+# Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
+# AUTHORS for a complete list of authors.
 #
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version
@@ -34,11 +36,14 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'is_template', 'Context', 'Color', 'Font', 'Modifier', 'Properties' ]
+__all__ = [ 'is_template', 'Context', 'Color', 'Font' ]
 
 # python imports
 import logging
 import cairo
+
+# kaa imports
+import kaa
 
 # get logging object
 log = logging.getLogger('kaa.candy')
@@ -192,88 +197,3 @@ class Font(object):
                 return f
             last = size
             size += 1
-
-
-class Modifier(object):
-    """
-    Modifier base class for classes that change widgets on creation by
-    templates. In the XML file they are added as subnode to the widget
-    to change. Examples are Properties and ReflectionModifier.
-    """
-
-    class __metaclass__(type):
-        def __new__(meta, name, bases, attrs):
-            cls = type.__new__(meta, name, bases, attrs)
-            if 'candyxml_name' in attrs.keys():
-                if cls.candyxml_name in Modifier._candyxml_modifier:
-                    raise RuntimeError('%s already defined' % cls.candyxml_name)
-                Modifier._candyxml_modifier[cls.candyxml_name] = cls
-            return cls
-
-    _candyxml_modifier = {}
-
-    def modify(self, widget):
-        """
-        Modify the given widget.
-        @param widget: widget to modify
-        @returns: changed widget (may be the same)
-        """
-        raise NotImplementedError
-
-    @classmethod
-    def candyxml_create(cls, element):
-        """
-        Create the modifier for the given element.
-
-        @note: do not call this function from inheriting functions. The name
-            is the same but the logic is different. This functions calls the
-            implementation variant, not the other way around.
-        """
-        cls = Modifier._candyxml_modifier.get(element.node)
-        if cls is None:
-            return cls
-        return cls.candyxml_create(element)
-
-
-class Properties(dict, Modifier):
-    """
-    Properties class to apply the given properties to a widget. This is a
-    dictionary for clutter functions to call after the widget is created.
-    """
-
-    #: candyxml name
-    candyxml_name = 'properties'
-
-    def modify(self, widget):
-        """
-        Apply to the given widget.
-
-        @param widget: a kaa.candy.Widget
-        """
-        for key, value in self.items():
-            setattr(widget, key, value)
-        return widget
-
-    @classmethod
-    def candyxml_create(cls, element):
-        """
-        Parse the candyxml element and create a Properties object::
-
-          <widget>
-            <properties key=value key=value/>
-          </widget>
-        """
-        properties = cls()
-        for key, value in element.attributes():
-            if key in ('opacity', 'depth'):
-                value = int(value)
-            elif key in ('rotation','xrotation','yrotation','zrotation'):
-                value = float(value)
-            elif key in ('xalign', 'yalign'):
-                value = value.lower()
-            elif key in ('keep_aspect',):
-                value = value.lower() in ('yes', 'true')
-            elif key in ('scale','anchor_point'):
-                value = [ int(x) for x in value.split(',') ]
-            properties[key] = value
-        return properties

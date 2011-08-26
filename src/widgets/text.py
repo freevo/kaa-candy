@@ -1,17 +1,19 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# text.py - text widget
+# text.py - multiline text widget
 # -----------------------------------------------------------------------------
-# $Id: $
+# $Id:$
 #
 # -----------------------------------------------------------------------------
-# kaa-candy - Third generation Canvas System using Clutter as backend
-# Copyright (C) 2008-2011 Dirk Meyer, Jason Tackaberry
+# kaa-candy - Fourth generation Canvas System using Clutter as backend
+# Copyright (C) 2011 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
 #
-# Please see the file AUTHORS for a complete list of authors.
+# Based on various previous attempts to create a canvas system for
+# Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
+# AUTHORS for a complete list of authors.
 #
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version
@@ -39,10 +41,10 @@ import re
 import pango
 import clutter
 
-import widget
+from widget import Widget
 from ..core import Color, Font
 
-class Text(widget.Widget):
+class Text(Widget):
     candyxml_name = 'text'
     candy_backend = 'candy.Text'
     attributes = [ 'color', 'font', 'text', 'align' ]
@@ -67,7 +69,7 @@ class Text(widget.Widget):
         @param context: the context the widget is created in
         """
         super(Text, self).__init__(pos, size, context)
-        self.align = align or widget.Widget.ALIGN_LEFT
+        self.align = align or Widget.ALIGN_LEFT
         self.font = font
         self.text = text
         self.color = color

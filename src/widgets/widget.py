@@ -1,10 +1,43 @@
+# -*- coding: iso-8859-1 -*-
+# -----------------------------------------------------------------------------
+# widget.py - base widget class
+# -----------------------------------------------------------------------------
+# $Id:$
+#
+# -----------------------------------------------------------------------------
+# kaa-candy - Fourth generation Canvas System using Clutter as backend
+# Copyright (C) 2011 Dirk Meyer
+#
+# First Version: Dirk Meyer <dischi@freevo.org>
+# Maintainer:    Dirk Meyer <dischi@freevo.org>
+#
+# Based on various previous attempts to create a canvas system for
+# Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
+# AUTHORS for a complete list of authors.
+#
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version
+# 2.1 as published by the Free Software Foundation.
+#
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
+#
+# -----------------------------------------------------------------------------
 
 __all__ = [ 'XMLdict', 'Widget' ]
 
 import kaa
 import kaa.weakref
 
-from .. import candyxml, core
+from .. import candyxml
+from ..core import Context
 
 next_id = 1
 
@@ -33,7 +66,7 @@ class BackendWrapper(object):
         if self.stage:
             return self.stage.queue_command(self.candy_id, cmd, args)
         self.queue.append((self.candy_id, cmd, args))
-            
+
     def __getattr__(self, attr):
         return lambda *args: self.call(attr, *args)
 
@@ -95,35 +128,47 @@ class Widget(object):
 
     xalign = None
     yalign = None
+    replaced = False
+
+    opacity = 255
 
     def __init__(self, pos=None, size=None, context=None):
+        self.attributes = self.attributes + ['xalign', 'yalign', 'opacity']
+        self.eventhandler = {
+            'replace': None
+        }
         global next_id
         self._candy_id = next_id
         next_id += 1
+        self.backend = BackendWrapper(self._candy_id)
+        Widget._candy_sync_new.append(self)
         if pos is not None:
             self.x, self.y = pos
         if size is not None:
             self.width, self.height = size
-        Widget._candy_sync_new.append(self)
-        self._candy_cache = {}
+        self.__sync_cache = {}
         self.__context = context or {}
-        self.backend = BackendWrapper(self._candy_id)
+        self.__depends = {}
 
     def __setattr__(self, attr, value):
         if value and attr in self.attribute_types and not isinstance(value, self.attribute_types[attr]):
             value = self.attribute_types[attr](value)
         super(Widget, self).__setattr__(attr, value)
-        if not self._candy_dirty and (attr in self.attributes or attr in ['xalign', 'yalign']):
+        if not self._candy_dirty and (attr in self.attributes):
             self.queue_rendering()
 
     def __del__(self):
-        if not hasattr(self, '_beacon_id'):
+        if not hasattr(self, '_candy_id'):
             return
         Widget._candy_sync_delete.append(self._candy_id)
         if self._candy_stage and not self._candy_stage._candy_dirty:
             self._candy_stage.queue_rendering()
 
     def __sync__(self, tasks):
+        """
+        Internal function to add the changes to the list of tasks for
+        the backend.
+        """
         if not self._candy_dirty:
             return False
         (x, y), (width, height) = self.intrinsic_geometry
@@ -131,10 +176,10 @@ class Widget(object):
         # needed. This does not result in a new rendering.
         attributes = {}
         for (attr, value) in [ ('x', x), ('y', y) ]:
-            if self._candy_cache.get(attr, NOT_SET) != value:
+            if self.__sync_cache.get(attr, NOT_SET) != value:
                 attributes[attr] = value
         if attributes:
-            self._candy_cache.update(attributes)
+            self.__sync_cache.update(attributes)
             tasks.append(('position', (self._candy_id, x, y)))
         # check all other attributes and this will cause a
         # re-rendering. Even width and height change the widget on the
@@ -142,13 +187,13 @@ class Widget(object):
         attributes = {}
         for attr in self.attributes:
             new_value = getattr(self, attr)
-            if self._candy_cache.get(attr, NOT_SET) != new_value:
+            if self.__sync_cache.get(attr, NOT_SET) != new_value:
                 attributes[attr] = new_value
         for (attr, value) in [ ('width', width), ('height', height) ]:
-            if self._candy_cache.get(attr, NOT_SET) != value:
+            if self.__sync_cache.get(attr, NOT_SET) != value:
                 attributes[attr] = value
         if attributes:
-            self._candy_cache.update(attributes)
+            self.__sync_cache.update(attributes)
             tasks.append(('update', (self._candy_id, attributes)))
         self._candy_dirty = False
         return True
@@ -167,6 +212,9 @@ class Widget(object):
         return False
 
     def sync_context(self):
+        """
+        Adjust to a new context
+        """
         pass
 
     def sync_layout(self, (width, height)):
@@ -181,10 +229,45 @@ class Widget(object):
         self.__intrinsic_size = self.__width, self.__height
 
     def sync_prepare(self):
+        """
+        Prepare widget for the next sync with the backend
+        """
         return self._candy_dirty
 
-    def animate(self, ease, secs, *args):
+    @kaa.coroutine()
+    def animate(self, ease, secs, unparent=False, **kwargs):
+        args = [item for sublist in kwargs.items() for item in sublist]
         self.backend.animate(ease, secs, *args)
+        yield kaa.delay(secs)
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+        if unparent:
+            self.parent = None
+
+    def add_dependencies(self, *vars):
+        """
+        Evaluate the context for the given variable and depend on the result
+
+        :param var: variable name to eval
+        """
+        for var in vars:
+            self.__depends[var] = repr(self.__context.get(var))
+
+    def supports_context(self, context):
+        """
+        Check if the widget is capable of the given context based on its
+        dependencies.
+
+        :param context: context dict
+        :returns: False if the widget can not handle the context or True
+        """
+        try:
+            for var, value in self.__depends.items():
+                if value != repr(context.get(var)):
+                    return False
+        except AttributeError:
+            return False
+        return True
 
     @property
     def x(self):
@@ -296,13 +379,14 @@ class Widget(object):
 
     @parent.setter
     def parent(self, parent):
-        if parent == self.__parent:
-            return
         if not self in Widget._candy_sync_reparent:
             self.queue_rendering()
             if self.__parent:
                 self.__parent.children.remove(self)
-        self.__parent = kaa.weakref.weakref(parent)
+        if parent:
+            self.__parent = kaa.weakref.weakref(parent)
+        else:
+            self.__parent = None
         if not self in Widget._candy_sync_reparent:
             if parent:
                 parent.children.append(self)
@@ -316,8 +400,8 @@ class Widget(object):
 
     @context.setter
     def context(self, context):
-        if not isinstance(context, core.Context):
-            context = core.Context(context)
+        if not isinstance(context, Context):
+            context = Context(context)
         self.__context = context
         self.sync_context()
 

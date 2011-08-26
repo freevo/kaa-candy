@@ -1,17 +1,19 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# image.py - Imlib2 Widget
+# image.py - image widget based on kaa.imlib2
 # -----------------------------------------------------------------------------
 # $Id:$
 #
 # -----------------------------------------------------------------------------
-# kaa-candy - Third generation Canvas System using Clutter as backend
-# Copyright (C) 2008-2011 Dirk Meyer, Jason Tackaberry
+# kaa-candy - Fourth generation Canvas System using Clutter as backend
+# Copyright (C) 2011 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
 #
-# Please see the file AUTHORS for a complete list of authors.
+# Based on various previous attempts to create a canvas system for
+# Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
+# AUTHORS for a complete list of authors.
 #
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version
@@ -31,16 +33,23 @@
 
 __all__ = [ 'Image', 'resolve_image_url' ]
 
+# python imports
 import os
+import logging
 import hashlib
 import tempfile
 
+# kaa imports
 import kaa
 import kaa.net.url
 import kaa.imlib2
 
-import widget
+# kaa.candy imports
+from widget import Widget
 from .. import config
+
+# get logging object
+log = logging.getLogger('kaa.candy')
 
 def resolve_image_url(name):
     """
@@ -53,16 +62,24 @@ def resolve_image_url(name):
             return filename
     return None
 
-class Image(widget.Widget):
+class Image(Widget):
+    """
+    kaa.imlib2.Imlib2 based image widget
+    """
     candyxml_name = 'image'
     candy_backend = 'candy.Imlib2Texture'
 
     attributes = [ 'data', 'modified', 'keep_aspect' ]
 
-    modified = False
+    # image variables
+    modified = True
     keep_aspect = False
 
-    _image_current_downloads = {}
+    # class variable with a dict of images currently loading
+    __current_downloads = {}
+
+    __filename = None
+    __imagedata = None
 
     def __init__(self, pos=None, size=None, url=None, context=None):
         """
@@ -79,6 +96,9 @@ class Image(widget.Widget):
         self.image = url
 
     def sync_context(self):
+        """
+        Adjust to a new context
+        """
         self.image = self.__image_provided
 
     def sync_layout(self, size):
@@ -100,6 +120,9 @@ class Image(widget.Widget):
             self.intrinsic_size = width, height
 
     def sync_prepare(self):
+        """
+        Prepare widget for the next sync with the backend
+        """
         if not self.modified:
             return False
         self.data = None, (0, 0)
@@ -112,23 +135,31 @@ class Image(widget.Widget):
             finally:
                 self.modified = False
                 os.close(fd)
+        self.modified = False
         return True
 
-    def _image_download_complete(self, status, cachefile):
+    def on_download_complete(self, status, cachefile):
         """
         Callback for HTTP GET result. The image should be in the
         cachefile.
         """
-        if cachefile in self._image_current_downloads:
-            del self._image_current_downloads[cachefile]
+        if cachefile in self.__current_downloads:
+            del self.__current_downloads[cachefile]
         self.image = cachefile
 
     @property
     def image(self):
+        """
+        Return the image as kaa.imlib2.Image
+        """
         return self.__imagedata
 
     @image.setter
     def image(self, image):
+        """
+        Set a new image. Either a kaa.imlib2.Image or based on a
+        filename or url.
+        """
         self.__image_provided = image
         if image and image.startswith('$'):
             # variable from the context, e.g. $varname
@@ -150,23 +181,26 @@ class Image(widget.Widget):
                 # FIXME: use one thread (jobserver) for all downloads
                 #  or at least a max number of threads to make the individual
                 #  image loading faster
-                if not cachefile in self._image_current_downloads:
+                if not cachefile in self.__current_downloads:
                     tmpfile = kaa.tempfile('candy-images/.' + base)
                     c = kaa.net.url.fetch(image, cachefile, tmpfile)
-                    self._image_current_downloads[cachefile] = c
-                self._image_current_downloads[cachefile].connect_weak_once(self._image_download_complete, cachefile)
+                    self.__current_downloads[cachefile] = c
+                self.__current_downloads[cachefile].connect_weak_once(self.on_download_complete, cachefile)
                 image = None
             else:
                 image = cachefile
         if image and not image.startswith('/'):
             image = resolve_image_url(image)
+        if self.__filename == image:
+            return
+        self.__filename = image
         try:
             if image:
                 self.__imagedata = kaa.imlib2.Image(image)
             else:
                 self.__imagedata = None
         except Exception, e:
-            print 'unable to load', image
+            log.error('unable to load %s', image)
             self.__imagedata = None
         self.modified = True
 

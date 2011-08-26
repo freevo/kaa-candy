@@ -4,17 +4,19 @@
 # -----------------------------------------------------------------------------
 # $Id:$
 #
-# This file contains the clutter code executed in the rendering
-# process and not the process importing kaa.candy.
+# This file is imported by the backend process in the clutter
+# mainloop. Importing and using clutter is thread-safe.
 #
 # -----------------------------------------------------------------------------
-# kaa-candy - Third generation Canvas System using Clutter as backend
-# Copyright (C) 2008-2011 Dirk Meyer, Jason Tackaberry
+# kaa-candy - Fourth generation Canvas System using Clutter as backend
+# Copyright (C) 2011 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
 #
-# Please see the file AUTHORS for a complete list of authors.
+# Based on various previous attempts to create a canvas system for
+# Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
+# AUTHORS for a complete list of authors.
 #
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version
@@ -40,8 +42,6 @@ class Widget(object):
 
     # clutter object
     obj = None
-    # candy parent object
-    parent = None
 
     ALIGN_LEFT = 'left'
     ALIGN_RIGHT = 'right'
@@ -69,10 +69,8 @@ class Widget(object):
         Delete the clutter object
         Executed in the clutter thread
         """
-        if not self.obj:
-            return
-        if self.parent and self.parent.obj:
-            self.parent.obj.remove(self.obj)
+        if self.obj and self.obj.get_parent():
+            self.obj.get_parent().remove(self.obj)
         self.obj = None
 
     def reparent(self, parent):
@@ -80,11 +78,10 @@ class Widget(object):
         Reparent the clutter object
         Executed in the clutter thread
         """
-        if self.parent:
-            self.parent.obj.remove(self.obj)
-        self.parent = parent
-        if self.parent:
-            self.parent.obj.add(self.obj)
+        if self.obj.get_parent():
+            self.obj.get_parent().remove(self.obj)
+        if parent:
+            parent.obj.add(self.obj)
 
     def set_position(self):
         """
@@ -102,6 +99,8 @@ class Widget(object):
             self.obj.set_width(self.width)
         if 'height' in modified and self.height:
             self.obj.set_height(self.height)
+        if 'opacity' in modified:
+            self.obj.set_opacity(self.opacity)
 
     def animate(self, ease, secs, *args):
         # Note: it is not possible to stop or modify an animation

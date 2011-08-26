@@ -5,13 +5,15 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# kaa-candy - Third generation Canvas System using Clutter as backend
-# Copyright (C) 2008-2011 Dirk Meyer, Jason Tackaberry
+# kaa-candy - Fourth generation Canvas System using Clutter as backend
+# Copyright (C) 2011 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
 #
-# Please see the file AUTHORS for a complete list of authors.
+# Based on various previous attempts to create a canvas system for
+# Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
+# AUTHORS for a complete list of authors.
 #
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version
@@ -36,9 +38,11 @@ import os
 import logging
 import traceback
 import xml.sax
+import imp
 
 # kaa.candy imports
-import core
+from core import Context, Color, Font
+from modifier import Modifier
 
 # get logging object
 log = logging.getLogger('kaa.candy')
@@ -74,7 +78,7 @@ class Template(object):
         :returns: widget object
         """
         if context is not None:
-            context = core.Context(context)
+            context = Context(context)
         args = self._kwargs.copy()
         args.update(kwargs)
         args['context'] = context
@@ -83,7 +87,7 @@ class Template(object):
             widget.__template__ = self
             widget.name = self.name
         except Exception, e:
-            traceback.print_exc()
+            log.exception('unable to create widget %s', self._cls)
             raise RuntimeError('unable to create %s%s: %s' % (self._cls, args.keys(), e))
         for modifier in self._modifier:
             widget = modifier.modify(widget)
@@ -107,7 +111,7 @@ class Template(object):
         """
         modifier = []
         for subelement in element.get_children():
-            mod = core.Modifier.candyxml_create(subelement)
+            mod = Modifier.candyxml_create(subelement)
             if mod is not None:
                 modifier.append(mod)
                 element.remove(subelement)
@@ -151,12 +155,19 @@ class Element(object):
             elif key in ('radius', 'size', 'spacing'):
                 value = int(value)
             elif key.find('color') != -1:
-                value = core.Color(value)
+                value = Color(value)
             elif key.find('font') != -1:
-                value = core.Font(value)
+                value = Font(value)
                 value.size = int(value.size)
             self._attrs[str(key).replace('-', '_')] = value
         self._children = []
+
+    @property
+    def candyxml(self):
+        root = self._parent
+        while getattr(root, '_parent', None) is not None:
+            root = root._parent
+        return root
 
     def __iter__(self):
         """
@@ -228,7 +239,7 @@ class CandyXML(xml.sax.ContentHandler):
     """
     candyxml parser.
     """
-    def __init__(self, data, geometry, elements=None):
+    def __init__(self, data, geometry, elements=None, path=None):
         xml.sax.ContentHandler.__init__(self)
         self._elements = elements or ElementDict()
         # Internal stuff
@@ -237,6 +248,8 @@ class CandyXML(xml.sax.ContentHandler):
         self._current = None
         self._stack = []
         self._names = []
+        self._path = path
+        self.scripts = {}
         self._parser = xml.sax.make_parser()
         self._parser.setContentHandler(self)
         if data.find('<') >= 0:
@@ -293,12 +306,23 @@ class CandyXML(xml.sax.ContentHandler):
         SAX Callback.
         """
         if self._current:
-            self._current.content = self._current.content.strip()
+            if self._current.content.strip().find('\n') == -1:
+                self._current.content = self._current.content.strip()
         if len(self._stack):
             self._current = self._stack.pop()
         elif name == 'alias':
             # alias for high level element, skip
             return
+        elif name == 'script':
+            if self._path:
+                name = os.path.splitext(self._current.filename)[0]
+                (file, filename, data) = imp.find_module(name, [ self._path ])
+                module = imp.load_module(name, file, filename, data)
+                for m in dir(module):
+                    if not m.startswith('_'):
+                        self.scripts[m] = getattr(module, m)
+            self._current = None
+            self._names = []
         elif name != self._root[0]:
             screen = self._current.xmlcreate()
             if not self._elements.get(name):
@@ -331,7 +355,7 @@ def parse(data, size=None, elements=None):
             continue
         f = os.path.join(data, f)
         try:
-            a, elements = CandyXML(f, size, elements).get_elements()
+            a, elements = CandyXML(f, size, elements, data).get_elements()
             attributes.update(a)
         except Exception, e:
             log.exception('parse error in %s', f)

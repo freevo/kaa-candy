@@ -1,10 +1,57 @@
+# -*- coding: iso-8859-1 -*-
+# -----------------------------------------------------------------------------
+# group.py - group widget containing other widgets
+# -----------------------------------------------------------------------------
+# $Id:$
+#
+# -----------------------------------------------------------------------------
+# kaa-candy - Fourth generation Canvas System using Clutter as backend
+# Copyright (C) 2011 Dirk Meyer
+#
+# First Version: Dirk Meyer <dischi@freevo.org>
+# Maintainer:    Dirk Meyer <dischi@freevo.org>
+#
+# Based on various previous attempts to create a canvas system for
+# Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
+# AUTHORS for a complete list of authors.
+#
+# This library is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License version
+# 2.1 as published by the Free Software Foundation.
+#
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
+#
+# -----------------------------------------------------------------------------
+
 __all__ = [ 'AbstractGroup', 'Group' ]
 
-import widget
-from .. import core
+# python imports
+import logging
 
-class AbstractGroup(widget.Widget):
+# kaa imports
+import kaa
 
+# kaa.candy imports
+from widget import Widget
+from ..core import is_template
+
+# get logging object
+log = logging.getLogger('kaa.candy')
+
+class AbstractGroup(Widget):
+    """
+    A simple group of widgets. This class has no XML parser function
+    and therefore, may be a better base class for widgets holding
+    children.
+    """
     candy_backend = 'candy.Group'
     attributes = [ 'clip' ]
 
@@ -14,28 +61,15 @@ class AbstractGroup(widget.Widget):
         super(AbstractGroup, self).__init__(pos, size, context)
         self.children = []
 
-    def __del__(self):
-        if hasattr(self, 'children'):
-            del self.children
-        super(AbstractGroup, self).__del__()
-
     def __sync__(self, tasks):
+        """
+        Internal function to add the changes to the list of tasks for
+        the backend.
+        """
         super(AbstractGroup, self).__sync__(tasks)
         for child in self.children:
             child.__sync__(tasks)
         return True
-
-    def sync_prepare(self):
-        if not super(AbstractGroup, self).sync_prepare():
-            return False
-        for child in self.children:
-            child.sync_prepare()
-        return True
-
-    def sync_context(self):
-        context = self.context
-        for child in self.children:
-            child.context = context
 
     def queue_rendering(self):
         """
@@ -56,6 +90,22 @@ class AbstractGroup(widget.Widget):
             if child.variable_size and not child._candy_dirty:
                 child.queue_rendering()
 
+    def sync_context(self):
+        """
+        Adjust to a new context
+        """
+        context = self.context
+        for child in self.children[:]:
+            if child.replaced:
+                continue
+            if not child.supports_context(context):
+                # FIXME: put new child at the same position in the
+                # stack as the old one
+                new = child.__template__(context=context)
+                self.replace(child, new)
+            else:
+                child.context = context
+
     def sync_layout(self, size):
         """
         Sync layout changes and calculate intrinsic size based on the
@@ -69,7 +119,7 @@ class AbstractGroup(widget.Widget):
                 # ignore this child and calculate this later when we
                 # know more about the children
                 pass
-            elif child.xalign == widget.Widget.ALIGN_SHRINK:
+            elif child.xalign == Widget.ALIGN_SHRINK:
                 # auto shrink, use intrinsic size
                 children_width = max(children_width, child.x + child.intrinsic_size[0])
             else:
@@ -79,7 +129,7 @@ class AbstractGroup(widget.Widget):
                 # ignore this child and calculate this later when we
                 # know more about the children
                 pass
-            elif child.yalign == widget.Widget.ALIGN_SHRINK:
+            elif child.yalign == Widget.ALIGN_SHRINK:
                 # auto shrink, use intrinsic size
                 children_height = max(children_height, child.y + child.intrinsic_size[1])
             else:
@@ -94,6 +144,16 @@ class AbstractGroup(widget.Widget):
             width = children_width if child.reference_x != 'parent' else self.size[0]
             height = children_height if child.reference_y != 'parent' else self.size[1]
             child.sync_layout((width, height))
+
+    def sync_prepare(self):
+        """
+        Prepare widget for the next sync with the backend
+        """
+        if not super(AbstractGroup, self).sync_prepare():
+            return False
+        for child in self.children:
+            child.sync_prepare()
+        return True
 
     def get_widget(self, name):
         """
@@ -126,21 +186,41 @@ class AbstractGroup(widget.Widget):
         for widget in widgets:
             widget.parent = None
 
+    @kaa.coroutine()
+    def replace(self, child, replacement):
+        """
+        Replace the given child with the replacement. Call the child's
+        replace eventhandler if available for an animation.
+        """
+        replacement.parent = self
+        child.replaced = True
+        if child.eventhandler.get('replace'):
+            replacing = child.eventhandler.get('replace')(child, replacement)
+            if isinstance(replacing, kaa.InProgress):
+                yield replacing
+        child.parent = None
+
     def clear(self):
+        """
+        Clear the group by removing all children
+        """
         for widget in self.children[:]:
             widget.parent = None
 
 
 
 class Group(AbstractGroup):
+    """
+    Group widget with XML support
+    """
 
     candyxml_name = 'group'
 
-    def __init__(self, pos=None, size=None, widgets=[], dependency=None, context=None):
+    def __init__(self, pos=None, size=None, widgets=[], context=None):
         super(Group, self).__init__(pos, size, context)
         self.children = []
         for widget in widgets:
-            if core.is_template(widget):
+            if is_template(widget):
                 widget = widget(context)
             self.add(widget)
 
@@ -153,21 +233,15 @@ class Group(AbstractGroup):
                 <child_widget2/>
             </group>
         """
-        parameter = super(Group, cls).candyxml_parse(element)
-        dependency=(element.depends or '').split(' ')
-        while '' in dependency:
-            dependency.remove('')
-        if dependency:
-            parameter.update(dependency=dependency)
         widgets = []
         for child in element:
             try:
                 widget = child.xmlcreate()
             except Exception, e:
-                print 'unable to parse %s: %s' % (child.node, e)
+                log.error('unable to parse %s: %s', child.node, e)
                 continue
             if not widget:
-                print 'unable to parse %s' % child.node
+                log.error('unable to parse %s', child.node)
                 continue
             widgets.append(widget)
-        return parameter.update(widgets=widgets)
+        return super(Group, cls).candyxml_parse(element).update(widgets=widgets)

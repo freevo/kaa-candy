@@ -1,17 +1,19 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# grid.py - Grid Widget
+# grid.py - grid widget
 # -----------------------------------------------------------------------------
 # $Id:$
 #
 # -----------------------------------------------------------------------------
-# kaa-candy - Third generation Canvas System using Clutter as backend
-# Copyright (C) 2008-2011 Dirk Meyer, Jason Tackaberry
+# kaa-candy - Fourth generation Canvas System using Clutter as backend
+# Copyright (C) 2011 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
 #
-# Please see the file AUTHORS for a complete list of authors.
+# Based on various previous attempts to create a canvas system for
+# Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
+# AUTHORS for a complete list of authors.
 #
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version
@@ -31,17 +33,22 @@
 
 __all__ = [ 'Grid', 'SelectionGrid' ]
 
+# kaa imports
 import kaa
 
-from .. import core
+# kaa.candy imports
+from ..core import is_template
+from group import AbstractGroup
 
-import widget
-import group
-
-class Grid(group.AbstractGroup):
+class Grid(AbstractGroup):
+    """
+    Grid holding several widgets based on the given items. The grid
+    supports scrolling.
+    @note: see C{test/flickr.py} for an example
+    """
     candyxml_name = 'grid'
 
-    HORIZONTAL, VERTICAL =  range(2)
+    HORIZONTAL, VERTICAL = range(2)
 
     __items = None
 
@@ -66,6 +73,9 @@ class Grid(group.AbstractGroup):
         self.cell_size = cell_size
         # store arguments for later private use
         self.__orientation = orientation
+        if isinstance(items, (str, unicode)):
+            # items is a string, get it from the context
+            items = self.context.get(items)
         self.items = items
         self.cell_item = cell_item
         self.template = template
@@ -108,7 +118,7 @@ class Grid(group.AbstractGroup):
         # list of rendered items
         self.item_widgets = {}
         # group of items
-        self.item_group = group.AbstractGroup((x0, y0))
+        self.item_group = AbstractGroup((x0, y0))
         self.add(self.item_group)
         self.create_grid = None
 
@@ -133,11 +143,17 @@ class Grid(group.AbstractGroup):
         return child
 
     def clear(self):
+        """
+        Clear the grid
+        """
         self.item_group.clear()
         self.item_widgets = {}
         self.queue_rendering()
 
     def sync_prepare(self):
+        """
+        Prepare widget for the next sync with the backend
+        """
         if self.create_grid:
             self.create_grid()
         if not super(Grid, self).sync_prepare():
@@ -149,17 +165,33 @@ class Grid(group.AbstractGroup):
                     item_num = x + y * self.num_items_x
                     if not (x, y) in self.item_widgets:
                         self.create_item(item_num, x, y)
+        if self.__orientation == Grid.HORIZONTAL:
+            max_x, max_y = self.location
+            for x in range(0, max_x + self.num_items_x):
+                for y in range(0, max_y + self.num_items_y):
+                    item_num = x * self.num_items_y + y
+                    if not (x, y) in self.item_widgets:
+                        self.create_item(item_num, x, y)
         return super(Grid, self).sync_prepare()
 
     def sync_context(self):
+        """
+        Adjust to a new context
+        """
         self.items = self.__items_provided
 
     @property
     def items(self):
+        """
+        Get list of items
+        """
         return self.__items
 
     @items.setter
     def items(self, items):
+        """
+        Set list of items
+        """
         self.__items_provided = items
         if isinstance(items, (str, unicode)):
             # items is a string, get it from the context
@@ -213,7 +245,7 @@ class Grid(group.AbstractGroup):
         self.location = (x, y)
         pos_x = -x * self.item_width + self.clip[0][0] + self.item_padding[0]
         pos_y = -y * self.item_height + self.clip[0][1] + self.item_padding[1]
-        self.item_group.animate('EASE_OUT_CUBIC', secs, 'x', pos_x, 'y', pos_y)
+        self.item_group.animate('EASE_OUT_CUBIC', secs, x=pos_x, y=pos_y)
         self.queue_rendering()
 
     @classmethod
@@ -228,19 +260,16 @@ class Grid(group.AbstractGroup):
         to add a container as child with the real children in it.
         """
         subelement = element[0]
-        # if subelement width or height are the same of the grid it was
-        # copied by candyxml from the parent. Set it to cell width or height
-        if subelement.width is element.width:
-            subelement.width = int(element.cell_width)
-        if subelement.height is element.height:
-            subelement.height = int(element.cell_height)
-        # return dict
         orientation = Grid.HORIZONTAL
         if element.orientation and element.orientation.lower() == 'vertical':
             orientation = Grid.VERTICAL
+        if element.cell_width:
+            element.cell_width = int(element.cell_width)
+        if element.cell_height:
+            element.cell_height = int(element.cell_height)
         return super(Grid, cls).candyxml_parse(element).update(
             template=subelement.xmlcreate(), items=element.items,
-            cell_size=(int(element.cell_width), int(element.cell_height)), cell_item=element.cell_item,
+            cell_size=(element.cell_width, element.cell_height), cell_item=element.cell_item,
             orientation=orientation)
 
 
@@ -248,7 +277,7 @@ class Grid(group.AbstractGroup):
 class SelectionGrid(Grid):
     """
     Grid with selection widget.
-    @note: see C{test/flickr.py} for an example
+    @note: see C{test/beacon.py} for an example
     """
 
     candyxml_style = 'selection'
@@ -273,14 +302,17 @@ class SelectionGrid(Grid):
         """
         super(SelectionGrid, self).__init__(pos, size, cell_size, cell_item, items,
             template, orientation, spacing, context)
-        if core.is_template(selection):
+        if is_template(selection):
             selection = selection()
         self.selection = selection
 
     def clear(self):
+        """
+        Clear the grid
+        """
         super(SelectionGrid, self).clear()
         self.item_group.add(self.selection)
-        
+
     def select(self, (x, y), secs):
         """
         Select a cell.
@@ -292,7 +324,7 @@ class SelectionGrid(Grid):
             self.create_grid()
         pos_x = x * self.item_width + self.selection.grid_adjust_x
         pos_y = y * self.item_height + self.selection.grid_adjust_y
-        self.selection.animate('EASE_OUT_CUBIC', secs, 'x', pos_x, 'y', pos_y)
+        self.selection.animate('EASE_OUT_CUBIC', secs, x=pos_x, y=pos_y)
         self.queue_rendering()
 
     def create_grid(self):
@@ -304,11 +336,26 @@ class SelectionGrid(Grid):
         """
         super(SelectionGrid, self).create_grid()
         self.item_group.add(self.selection)
-        self.selection.grid_adjust_x = self.selection.x = (self.item_width - self.item_padding[0] - self.selection.width) / 2
-        self.selection.grid_adjust_y = self.selection.y = (self.item_height - self.item_padding[1] - self.selection.height) / 2
+        self.selection.grid_adjust_x = self.selection.x = \
+            (self.item_width - self.item_padding[0] - self.selection.width) / 2
+        self.selection.grid_adjust_y = self.selection.y = \
+            (self.item_height - self.item_padding[1] - self.selection.height) / 2
 
     @classmethod
     def candyxml_parse(cls, element):
+        """
+        Parse the candyxml element for parameter to create the widget. Example::
+          <grid width='100' height='100' cell-width='30' cell-height='30'
+              cell-item='item' items='listing'>
+              <image filename='$item.filename'/>
+              <selection>
+                  <rectangle/>
+              </selection/>
+          </grid>
+        There are only the two children element allowed, if more is
+        needed you need to add a container as child with the real
+        children in it.
+        """
         selection = None
         for child in element:
             if child.node == 'selection':
