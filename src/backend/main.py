@@ -98,7 +98,11 @@ class Mainloop(object):
                 func(*args)
             except Exception, e:
                 traceback.print_exc()
-        print 'sync took %0.4f sec' % (time.time() - t0)
+        sync_time = time.time() - t0
+        if sync_time > 0.01:
+            # only print out the sync time if we cannot make
+            # 100fps. Below is always high enough
+            print 'sync took %0.4f sec' % sync_time
         event.set()
         return False
 
