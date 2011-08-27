@@ -131,9 +131,11 @@ class Widget(object):
     yalign = None
 
     opacity = 255
+    scale = 1, 1
+    anchor_point = 0, 0
 
     def __init__(self, pos=None, size=None, context=None):
-        self.attributes = self.attributes + ['xalign', 'yalign', 'opacity']
+        self.attributes = self.attributes + ['xalign', 'yalign', 'opacity', 'scale', 'anchor_point']
         self.eventhandler = {
             'replace': None
         }
@@ -269,6 +271,18 @@ class Widget(object):
             return False
         return True
 
+    def raise_top(self):
+        """
+        Raise widget to the top of the stack
+        """
+        self.backend.raise_top()
+
+    def lower_bottom(self):
+        """
+        Lower widget to the bottom of the stack
+        """
+        self.backend.lower_bottom()
+
     @property
     def x(self):
         return self.__x
@@ -371,7 +385,7 @@ class Widget(object):
             y += int((self.__height - height) / 2)
         if self.yalign == Widget.ALIGN_BOTTOM:
             y += int(self.__height - height)
-        return (x, y), (width, height)
+        return (x + self.anchor_point[0], y + self.anchor_point[1]), (width, height)
 
     @property
     def parent(self):
@@ -385,11 +399,11 @@ class Widget(object):
                 self.__parent.children.remove(self)
         if parent:
             self.__parent = kaa.weakref.weakref(parent)
+            self.__parent.children.append(self)
         else:
             self.__parent = None
         if not self in Widget._candy_sync_reparent:
             if parent:
-                parent.children.append(self)
                 parent.queue_rendering()
             Widget._candy_sync_reparent.append(self)
             self.queue_rendering()

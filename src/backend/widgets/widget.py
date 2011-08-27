@@ -90,6 +90,18 @@ class Widget(object):
         """
         self.obj.set_position(self.x, self.y)
 
+    def raise_top(self):
+        """
+        Raise widget to the top of the stack
+        """
+        self.obj.raise_top()
+
+    def lower_bottom(self):
+        """
+        Lower widget to the bottom of the stack
+        """
+        self.obj.lower_bottom()
+
     def update(self, modified):
         """
         Render the widget
@@ -101,6 +113,10 @@ class Widget(object):
             self.obj.set_height(self.height)
         if 'opacity' in modified:
             self.obj.set_opacity(self.opacity)
+        if 'scale' in modified:
+            self.obj.set_scale(*self.scale)
+        if 'anchor_point' in modified:
+            self.obj.set_anchor_point(*self.anchor_point)
 
     def animate(self, ease, secs, *args):
         # Note: it is not possible to stop or modify an animation
