@@ -184,7 +184,7 @@ class Font(object):
                 self.get_height(size=size)
             if self.__height_cache.get((self.name, size))[Font.MAX_HEIGHT] > height:
                 f = Font(self.name)
-                f.size = size
+                f.size = size - 1
                 return f
             last = size
             size += 1
