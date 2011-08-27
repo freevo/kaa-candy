@@ -46,9 +46,6 @@ Text
 def main():
     stage = kaa.candy2.Stage((400,300), 'candy')
     attr, candy = stage.candyxml(xml)
-    if 'geometry' in attr:
-        stage.set_content_geometry(attr['geometry'])
-
     container = candy.group.g1()
     stage.add(container)
     yield kaa.NotFinished

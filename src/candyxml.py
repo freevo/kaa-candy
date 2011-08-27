@@ -160,11 +160,10 @@ class CandyXML(xml.sax.ContentHandler):
     """
     candyxml parser.
     """
-    def __init__(self, data, geometry, elements=None, path=None):
+    def __init__(self, data, elements=None, path=None):
         xml.sax.ContentHandler.__init__(self)
         self._elements = elements or ElementDict()
         # Internal stuff
-        self._geometry = geometry
         self._root = None
         self._current = None
         self._stack = []
@@ -195,15 +194,6 @@ class CandyXML(xml.sax.ContentHandler):
         """
         if self._root is None:
             self._root = name, attrs
-            if attrs.get('geometry'):
-                # candyxml tag has geometry information for scaling
-                w, h = [ int(v) for v in attrs['geometry'].split('x') ]
-                self.width, self.height = w, h
-            else:
-                # no geometry information. Let us hope we have something from the stage
-                if not self._geometry:
-                    raise RuntimeError('no geometry information')
-                self.width, self.height = self._geometry
             if not name in _parser.keys():
                 # must be a parent tag like cnadyxml around
                 # everything. This means we may have more than one
@@ -261,22 +251,21 @@ class CandyXML(xml.sax.ContentHandler):
             self._current.content += c
 
 
-def parse(data, size=None, elements=None):
+def parse(data, elements=None):
     """
     Load a candyxml file based on the given screen resolution.
     @param data: filename of the XML file to parse or XML data
-    @param size: width and height of the window to adjust values in the XML file
     @returns: root element attributes and dict of parsed elements
     """
     if not os.path.isdir(data):
-        return CandyXML(data, size, elements).get_elements()
+        return CandyXML(data, elements).get_elements()
     attributes = {}
     for f in os.listdir(data):
         if not f.endswith('.xml'):
             continue
         f = os.path.join(data, f)
         try:
-            a, elements = CandyXML(f, size, elements, data).get_elements()
+            a, elements = CandyXML(f, elements, data).get_elements()
             attributes.update(a)
         except Exception, e:
             log.exception('parse error in %s', f)

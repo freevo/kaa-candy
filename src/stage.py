@@ -54,6 +54,8 @@ class StageGroup(Group):
     """
     Group on the stage as parent for widgets added to the stage.
     """
+    initialized = False
+
     def __init__(self, stage, size):
         super(StageGroup, self).__init__(size=size)
         self.stage = stage
@@ -91,7 +93,7 @@ class Stage(object):
         self.ipc.register(self)
         self.size = size
         # create the base widget
-        self.group = StageGroup(self, size=size)
+        self.layer = [ StageGroup(self, size=size) ]
         # We need the render pipe, the 'step' signal is not enough. It
         # is not triggered between timer and select and a change done
         # in a timer may get lost.
@@ -104,17 +106,27 @@ class Stage(object):
         self.scale = None
         self.commands = []
 
-    def add(self, *widgets):
+    def add_layer(self):
+        """
+        Add a new layer and return its id
+        """
+        layer = StageGroup(self, size=self.size)
+        if self.scale:
+            layer.scale, (layer.width, layer.height) = self.scale
+        self.layer.append(layer)
+        return len(self.layer) - 1
+
+    def add(self, *widgets, **kwargs):
         """
         Add the given widgets to the stage
         """
-        self.group.add(*widgets)
+        self.layer[kwargs.get('layer', 0)].add(*widgets)
 
-    def remove(self, *widgets):
+    def remove(self, *widgets, **kwargs):
         """
         Remove the given widgets from the stage
         """
-        self.group.remove(*widgets)
+        self.layer[kwargs.get('layer', 0)].remove(*widgets)
 
     def queue_rendering(self):
         """
@@ -145,7 +157,8 @@ class Stage(object):
         self._candy_dirty = False
         tasks = []
         # prepare all widgets for the sync
-        self.group.sync_prepare()
+        for layer in self.layer:
+            layer.sync_prepare()
         # create new widgets
         while Widget._candy_sync_new:
             widget = Widget._candy_sync_new.pop(0)
@@ -158,11 +171,7 @@ class Stage(object):
         if not self.initialized:
             self.initialized = True
             tasks.append(('add', ('stage.Stage', -1)))
-            tasks.append(('call', (-1, 'init', (self.size, 'candy:widget/%s' % self.group._candy_id))))
-        # scale stage object if needed
-        if self.scale:
-            tasks.append(('call', (-1, 'scale', (self.scale,))))
-            self.scale = None
+            tasks.append(('call', (-1, 'init', (self.size, ))))
         # change parents for the widgets
         while Widget._candy_sync_reparent:
             widget = Widget._candy_sync_reparent.pop(0)
@@ -171,7 +180,11 @@ class Stage(object):
             else:
                 tasks.append(('reparent', (widget._candy_id, None)))
         # sync all children
-        self.group.__sync__(tasks)
+        for layer in self.layer:
+            if not layer.initialized:
+                tasks.append(('reparent', (layer._candy_id, -1)))
+                layer.initialized = True
+            layer.__sync__(tasks)
         # add commands for the widgets
         while self.commands:
             tasks.append(('call', self.commands.pop(0)))
@@ -193,7 +206,9 @@ class Stage(object):
         if isinstance(size, (str, unicode)):
             size = int(size.split('x')[0]), int(size.split('x')[1])
         self._candy_dirty = True
-        self.scale = (float(self.size[0]) / size[0], float(self.size[1]) / size[1])
+        self.scale = (float(self.size[0]) / size[0], float(self.size[1]) / size[1]), size
+        for layer in self.layer:
+            layer.scale, (layer.width, layer.height) = self.scale
 
     @kaa.rpc.expose()
     def event_key_press(self, key):
@@ -209,4 +224,7 @@ class Stage(object):
         @param data: filename of the XML file to parse or XML data
         @returns: root element attributes and dict of parsed elements
         """
-        return candyxml.parse(data, self.size)
+        attr, templates = candyxml.parse(data)
+        if 'geometry' in attr:
+            self.set_content_geometry(attr['geometry'])
+        return attr, templates

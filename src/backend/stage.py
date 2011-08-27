@@ -63,18 +63,10 @@ class Stage(object):
         if key is not None:
             self.server.send_event('key-press', key)
 
-    def init(self, size, group):
+    def init(self, size):
         """
         Set the size and the base group
         """
-        self.group = group
         self.obj.set_size(*size)
         self.obj.set_color(clutter.Color(0, 0, 0, 0xff))
-        self.obj.add(group.obj)
         self.obj.show()
-
-    def scale(self, factor):
-        """
-        Scale the stage and the core group object
-        """
-        self.group.obj.set_scale(*factor)
