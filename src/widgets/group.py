@@ -167,7 +167,7 @@ class AbstractGroup(Widget):
         for child in self.children:
             if child.name == name:
                 return child
-            if isinstance(child, Group):
+            if isinstance(child, AbstractGroup):
                 result = child.get_widget(name)
                 if result is not None:
                     return result
