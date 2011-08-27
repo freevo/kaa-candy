@@ -39,6 +39,7 @@ if not sys.argv[0].startswith(os.path.dirname(__file__)):
     # only import the submodules from the main application and not
     # from the rendering backend process.
     from core import Context, Color, Font
+    from modifier import Modifier, Properties, Eventhandler, Dependency
     from template import is_template, Template
     from widgets import *
     from stage import Stage
