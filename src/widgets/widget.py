@@ -38,6 +38,7 @@ import kaa.weakref
 
 from .. import candyxml
 from ..core import Context
+from ..template import Template
 
 next_id = 1
 
@@ -102,7 +103,7 @@ class Widget(object):
             return cls
 
     #: template for object creation
-    __template__ = candyxml.Template
+    __template__ = Template
 
     # widgets with dynamic size depend on the size of the paent or
     # other widgets in a group based on the reference setting.
@@ -128,7 +129,6 @@ class Widget(object):
 
     xalign = None
     yalign = None
-    replaced = False
 
     opacity = 255
 

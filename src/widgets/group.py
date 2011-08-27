@@ -41,7 +41,7 @@ import kaa
 
 # kaa.candy imports
 from widget import Widget
-from ..core import is_template
+from .. import is_template
 
 # get logging object
 log = logging.getLogger('kaa.candy')
@@ -60,6 +60,7 @@ class AbstractGroup(Widget):
     def __init__(self, pos=None, size=None, context=None):
         super(AbstractGroup, self).__init__(pos, size, context)
         self.children = []
+        self.__replacing = []
 
     def __sync__(self, tasks):
         """
@@ -96,7 +97,7 @@ class AbstractGroup(Widget):
         """
         context = self.context
         for child in self.children[:]:
-            if child.replaced:
+            if child in self.__replacing:
                 continue
             if not child.supports_context(context):
                 # FIXME: put new child at the same position in the
@@ -193,11 +194,12 @@ class AbstractGroup(Widget):
         replace eventhandler if available for an animation.
         """
         replacement.parent = self
-        child.replaced = True
+        self.__replacing.append(child)
         if child.eventhandler.get('replace'):
             replacing = child.eventhandler.get('replace')(child, replacement)
             if isinstance(replacing, kaa.InProgress):
                 yield replacing
+        self.__replacing.remove(child)
         child.parent = None
 
     def clear(self):

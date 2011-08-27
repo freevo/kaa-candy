@@ -36,7 +36,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'is_template', 'Context', 'Color', 'Font' ]
+__all__ = [ 'Context', 'Color', 'Font' ]
 
 # python imports
 import logging
@@ -47,15 +47,6 @@ import kaa
 
 # get logging object
 log = logging.getLogger('kaa.candy')
-
-def is_template(obj):
-    """
-    Returns True if the given object is a kaa.candy template class. This function
-    is needed to check if a given widget is a real clutter widget or only a template
-    for creating one.
-    """
-    return getattr(obj, '__is_template__', False)
-
 
 class Context(dict):
 

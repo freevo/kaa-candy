@@ -31,98 +31,19 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Template', 'parse', 'register', 'get_class' ]
+__all__ = [ 'parse', 'register', 'get_class' ]
 
 # python imports
 import os
 import logging
-import traceback
 import xml.sax
 import imp
 
 # kaa.candy imports
-from core import Context, Color, Font
-from modifier import Modifier
+from core import Color, Font
 
 # get logging object
 log = logging.getLogger('kaa.candy')
-
-
-class Template(object):
-    """
-    Template to create a widget on demand. All XML parsers will create such an
-    object to parse everything at once.
-    """
-
-    #: class is a template class
-    __is_template__ = True
-
-    def __init__(self, cls, name, **kwargs):
-        """
-        Create a template for the given class
-
-        :param cls: widget class
-        :param kwargs: keyword arguments for cls.__init__
-        """
-        self._cls = cls
-        self._modifier = kwargs.pop('modifier', [])
-        self._kwargs = kwargs
-        self.name = name
-
-    def __call__(self, context=None, **kwargs):
-        """
-        Create the widget with the given context and override some
-        constructor arguments.
-
-        :param context: context to create the widget in
-        :returns: widget object
-        """
-        if context is not None:
-            context = Context(context)
-        args = self._kwargs.copy()
-        args.update(kwargs)
-        args['context'] = context
-        try:
-            widget = self._cls(**args)
-            widget.__template__ = self
-            widget.name = self.name
-        except Exception, e:
-            log.exception('unable to create widget %s', self._cls)
-            raise RuntimeError('unable to create %s%s: %s' % (self._cls, args.keys(), e))
-        for modifier in self._modifier:
-            widget = modifier.modify(widget)
-        return widget
-
-    def __repr__(self):
-        return '<kaa.candy.Template for %s>' % self._cls
-
-    @classmethod
-    def candyxml_get_class(cls, element):
-        """
-        Get the class for the candyxml element. This function may be overwritten
-        by inheriting classes and should not be called from outside such a class.
-        """
-        return get_class(element.node, element.style)
-
-    @classmethod
-    def candyxml_create(cls, element):
-        """
-        Parse the candyxml element for parameter and create a Template.
-        """
-        modifier = []
-        for subelement in element.get_children():
-            mod = Modifier.candyxml_create(subelement)
-            if mod is not None:
-                modifier.append(mod)
-                element.remove(subelement)
-        widget = cls.candyxml_get_class(element)
-        if widget is None:
-            log.error('undefined widget %s:%s', element.node, element.style)
-        kwargs = widget.candyxml_parse(element)
-        if modifier:
-            kwargs['modifier'] = modifier
-        template = cls(widget, name=kwargs.candyname, **kwargs)
-        return template
 
 
 class ElementDict(dict):

@@ -37,7 +37,7 @@ __all__ = [ 'Grid', 'SelectionGrid' ]
 import kaa
 
 # kaa.candy imports
-from ..core import is_template
+from .. import is_template
 from group import AbstractGroup
 
 class Grid(AbstractGroup):
