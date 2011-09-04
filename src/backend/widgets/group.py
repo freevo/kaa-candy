@@ -1,8 +1,11 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# __init__.py - main widget module
+# group.py - group widget containing other widgets
 # -----------------------------------------------------------------------------
 # $Id:$
+#
+# This file is imported by the backend process in the clutter
+# mainloop. Importing and using clutter is thread-safe.
 #
 # -----------------------------------------------------------------------------
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
@@ -31,15 +34,28 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = []
+__all__ = [ 'Group' ]
 
-# kaa imports
-import kaa.utils
+import clutter
+import widget
 
-# load all widget files in this directory
-for name, module in kaa.utils.get_plugins(location=__file__).items():
-    if isinstance(module, Exception):
-        raise ImportError('error importing %s: %s' % (name, module))
-    for widget in module.__all__:
-        __all__.append(widget)
-        globals()[widget] = getattr(module, widget)
+class Group(widget.Widget):
+
+    def create(self):
+        """
+        Create the clutter object
+        """
+        self.obj = clutter.Group()
+        self.obj.show()
+
+    def update(self, modified):
+        """
+        Render the widget
+        """
+        super(Group, self).update(modified)
+        if 'clip' in modified:
+            if self.clip:
+                (x, y), (width, height) = self.clip
+                self.obj.set_clip(x, y, width, height)
+            else:
+                self.obj.remove_clip()

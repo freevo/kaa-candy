@@ -1,8 +1,11 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# __init__.py - main widget module
+# text.py - text widget
 # -----------------------------------------------------------------------------
 # $Id:$
+#
+# This file is imported by the backend process in the clutter
+# mainloop. Importing and using clutter is thread-safe.
 #
 # -----------------------------------------------------------------------------
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
@@ -31,15 +34,32 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = []
+__all__ = [ 'Text' ]
 
-# kaa imports
-import kaa.utils
+import clutter
+import pango
 
-# load all widget files in this directory
-for name, module in kaa.utils.get_plugins(location=__file__).items():
-    if isinstance(module, Exception):
-        raise ImportError('error importing %s: %s' % (name, module))
-    for widget in module.__all__:
-        __all__.append(widget)
-        globals()[widget] = getattr(module, widget)
+import widget
+
+class Text(widget.Widget):
+
+    def create(self):
+        """
+        Create the clutter object
+        """
+        self.obj = clutter.Text()
+        self.obj.show()
+
+    def update(self, modified):
+        """
+        Render the widget
+        """
+        super(Text, self).update(modified)
+        if 'align' in modified and self.align:
+            self.obj.set_line_alignment(str(self.align))
+        self.obj.set_line_wrap(True)
+        self.obj.set_line_wrap_mode(pango.WRAP_WORD_CHAR)
+        self.obj.set_use_markup(True)
+        self.obj.set_font_name("%s %spx" % (self.font.name, self.font.size))
+        self.obj.set_color(clutter.Color(*self.color))
+        self.obj.set_text(self.text)

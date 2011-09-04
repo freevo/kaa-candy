@@ -9,12 +9,12 @@ import feedparser
 import kaa.beacon
 
 # we use the following xml (file) as gui. There is one widget:
-# a container called "thumbnails" with a label and a grid in it.
+# a group called "thumbnails" with a label and a grid in it.
 # The grid needs a template for each cell which is again a
-# container with a label and an image.
+# group with a label and an image.
 xml = '''
 <candyxml geometry="800x600">
-    <container name="thumbnails" x="10" y="10" width="780" height="580">
+    <group name="thumbnails" x="10" y="10" width="780" height="580">
         <label font="Vera:24" color="0xcccccc">
             <properties xalign="center"/>
             $title
@@ -30,12 +30,12 @@ xml = '''
                 <rectangle color="0x6666cc" width="126" height="86"/>
             </selection>
         </grid>
-    </container>
+    </group>
 </candyxml>
 '''
 
 # create a stage window and parse the xml file
-stage = kaa.candy.Stage((800,600))
+stage = kaa.candy.Stage((800,600), 'beacon')
 candy = stage.candyxml(xml)[1]
 
 @kaa.coroutine()
@@ -43,18 +43,18 @@ def main():
     query = yield (yield kaa.beacon.get(sys.argv[1])).list()
 
     # this is the context for the images widget
-    context = dict(title=os.path.basename(sys.argv[1]), items=query)
-    container = candy.container.thumbnails(context=context)
-    stage.add(container)
-    grid = container.get_widget('items')
+    context = kaa.candy.Context(title=os.path.basename(sys.argv[1]), items=query)
+    group = candy.group.thumbnails(context=context)
+    stage.add(group)
+    grid = group.get_widget('items')
 
-    if 1:
-        # add effects and hide selection rectangle
-        grid.behave('opacity', 80, 255).behave('scale', (1, 1), (1.1, 1.1))
-        grid.selection.opacity = 0
-    if 0:
-        # add effects and hide selection rectangle
-        grid.behave('scale', (1, 1), (1.5, 1.5))
+    # if 1:
+    #     # add effects and hide selection rectangle
+    #     grid.behave('opacity', 80, 255).behave('scale', (1, 1), (1.1, 1.1))
+    #     grid.selection.opacity = 0
+    # if 0:
+    #     # add effects and hide selection rectangle
+    #     grid.behave('scale', (1, 1), (1.5, 1.5))
 
     yield kaa.delay(0.5)
 

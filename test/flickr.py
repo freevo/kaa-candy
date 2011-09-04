@@ -3,9 +3,9 @@ import kaa.candy
 import feedparser
 
 # we use the following xml (file) as gui. There are two main widgets:
-# a label called "wait" and a container called "flickr" with a label and
+# a label called "wait" and a group called "flickr" with a label and
 # a grid in it. The grid needs a template for each cell which is again a
-# container with a label and an image. The flickr container depends on
+# group with a label and an image. The flickr group depends on
 # two variables in the context: title for the label and items for the
 # grid. The image also has a reflection modifier.
 # Note: this reflection is the reason why the scrolling is not smooth
@@ -16,7 +16,7 @@ xml = '''
         <properties xalign="center"/>
         Loading feed, please wait
     </label>
-    <container name="flickr" x="10" y="10" width="780" height="580">
+    <group name="flickr" x="10" y="10" width="780" height="580">
         <label font="Vera:24" color="0xcccccc">
             <properties xalign="center"/>
             $title
@@ -24,24 +24,23 @@ xml = '''
         <grid y="50" height="530" cell-width="160" cell-height="140"
             items="items" cell-item="item" orientation="vertical">
             <properties name="items"/>
-            <container>
+            <group>
                 <image url="$item.thumbnail" width="160" height="100">
                     <properties xalign="center" yalign="center" keep-aspect="true"/>
-                    <reflection opacity="80"/>
                 </image>
                 <label y="110" font="Vera:10" color="0xcccccc">
                     <properties xalign="center"/>
                     $item.title
                 </label>
-            </container>
+            </group>
         </grid>
-    </container>
+    </group>
 </candyxml>
 '''
 
 # create a stage window and parse the xml file
-stage = kaa.candy.Stage((800,600))
-candy = stage.candyxml(xml)[1]
+stage = kaa.candy.Stage((800,600), 'flickr')
+attr, candy = stage.candyxml(xml)
 
 # add the wait widget to the stage. Since it is only a template it is
 # safe to do this in the mainloop.
@@ -56,6 +55,7 @@ class Image(object):
 
 @kaa.threaded()
 def load_feed(tag):
+    # feed = feedparser.parse('feed.xml')
     feed = feedparser.parse('http://api.flickr.com/services/feeds/photos_public.gne?' +
                             'tags=%s&lang=en-us&format=atom' % tag)
 
@@ -77,15 +77,15 @@ def main():
     context = dict(title=feed.feed.title, items=items)
 
     # remove the wait label (it is safe to remove something from the stage in the
-    # mainloop) and add the flickr container based on the context.
+    # mainloop) and add the flickr group based on the context.
     stage.remove(label)
-    container = candy.container.flickr(context=context)
-    stage.add(container)
+    group = candy.group.flickr(context=context)
+    stage.add(group)
 
     print 'take a look'
     yield kaa.delay(1)
     print 'scroll down'
-    grid = container.get_widget('items')
+    grid = group.get_widget('items')
     grid.scroll_by((0, 2), 1)
     yield kaa.delay(2)
     print 'scroll right'
@@ -93,9 +93,9 @@ def main():
     yield kaa.delay(2)
     print 'scroll up very fast, more than possible'
     grid.scroll_by((0,-15), 0.5)
-    yield kaa.delay(2)
+    yield kaa.delay(3)
     print 'and down again'
-    grid.scroll_by((1,1), 0.8)
+    grid.scroll_by((1,1), 2)
     yield kaa.delay(0.7)
     print 'and left again while the animation is still running'
     grid.scroll_by((-1, 0), 0.8)
@@ -104,12 +104,10 @@ def main():
     grid.scroll_to((0, 0), 0.8)
     yield kaa.delay(2)
     print 'load more'
-
     # create new context and replace it
     feed, items = yield load_feed('sunset')
-    context = dict(title=feed.feed.title, items=items)
-    # set context
-    container.context = context
+    # set new context
+    group.context = kaa.candy.Context(title=feed.feed.title, items=items)
 
 main()
 

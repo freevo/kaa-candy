@@ -1,27 +1,19 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# grid.py - Grid Widget
+# grid.py - grid widget
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# Note: scrolling is not as smooth as it should be. The main reason for this
-# in the flickr test case is that it uses reflections on the images and the
-# reflections are rendered in software in the clutter thread. We may also want
-# to load images async in this case:
-# http://www.mail-archive.com/pygtk@daa.com.au/msg15323.html
-#
-# Maybe we also want to remove images we do not see anymore to free some
-# memory and in case they are still downloading the image, we want to abort
-# that to free bandwidth for images we see right now
+# $Id:$
 #
 # -----------------------------------------------------------------------------
-# kaa-candy - Third generation Canvas System using Clutter as backend
-# Copyright (C) 2008-2009 Dirk Meyer, Jason Tackaberry
+# kaa-candy - Fourth generation Canvas System using Clutter as backend
+# Copyright (C) 2011 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
 #
-# Please see the file AUTHORS for a complete list of authors.
+# Based on various previous attempts to create a canvas system for
+# Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
+# AUTHORS for a complete list of authors.
 #
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version
@@ -39,65 +31,29 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Grid', 'SelectionGrid', 'SelectionGrid2' ]
-
-# python imports
-import logging
+__all__ = [ 'Grid', 'SelectionGrid' ]
 
 # kaa imports
 import kaa
 
-# kaa.candy imports imports
-from container import Group
+# kaa.candy imports
 from .. import is_template
-from ..behaviour import MAX_ALPHA, Behaviour, create_behaviour
+from group import AbstractGroup
 
-# get logging object
-log = logging.getLogger('kaa.candy')
-
-class ScrollBehaviour(Behaviour):
+class Grid(AbstractGroup):
     """
-    Behaviour for setting the scrolling steps
-    """
-    def __init__(self, (x, y), func_name):
-        super(ScrollBehaviour, self).__init__((0,0), (x,y))
-        self._current = (0,0)
-        self._func_name = func_name
-
-    def apply(self, alpha_value, widgets):
-        """
-        Apply behaviour based on alpha value to the widgets
-        """
-        current = self.get_current(alpha_value)
-        x = current[0] - self._current[0]
-        y = current[1] - self._current[1]
-        self._current = current
-        for widget in widgets:
-            getattr(widget, self._func_name)(x, y)
-
-
-class ItemGroup(Group):
-    def __init__(self, pos):
-        super(ItemGroup, self).__init__(pos)
-        # x,y coordinates of the items group in the grid. These will never
-        # change will will be kep as reference
-        self.x0, self.y0 = pos
-        # cell number of the upper left corner if all animations are done
-        self.cell0 = [ 0, 0 ]
-
-
-class Grid(Group):
-    """
-    Grid Widget
+    Grid holding several widgets based on the given items. The grid
+    supports scrolling.
     @note: see C{test/flickr.py} for an example
     """
     candyxml_name = 'grid'
-    context_sensitive = True
 
-    HORIZONTAL, VERTICAL =  range(2)
+    HORIZONTAL, VERTICAL = range(2)
+
+    __items = None
 
     def __init__(self, pos, size, cell_size, cell_item, items, template,
-                 orientation, spacing=None, context=None):
+                 orientation, xpadding=None, ypadding=None, context=None):
         """
         Simple grid widget to show the items based on the template.
 
@@ -108,26 +64,26 @@ class Grid(Group):
         @param items: list of objects or object name in the context
         @param template: child template for each cell
         @param orientation: how to arange the grid: Grid.HORIZONTAL or Grid.VERTICAL
-        @param spacing: x,y values of space between two items. If set to None
-            the spacing will be calculated based on cell size and widget size
+        @param xpadding: x value of space between two items. If set to None
+            the padding will be calculated based on cell size and widget size
+        @param ypadding: y value of space between two items. If set to None
+            the padding will be calculated based on cell size and widget size
         @param context: the context the widget is created in
         """
-        super(Grid, self).__init__(pos, size, context)
-        # clip the grid to hide cells moved outside the visible area
-        if isinstance(items, (str, unicode)):
-            # items is a string, get it from the context
-            self.add_dependency(items)
-            items = self.context.get(items)
+        super(Grid, self).__init__(pos, size, context=context)
         # store arguments for later public use
         self.cell_size = cell_size
         # store arguments for later private use
         self.__orientation = orientation
-        self.__child_listing = items
-        self.__child_context = cell_item
-        self.__child_template = template
-        self.spacing = spacing
+        if isinstance(items, (str, unicode)):
+            # items is a string, get it from the context
+            items = self.context.get(items)
+        self.items = items
+        self.cell_item = cell_item
+        self.template = template
+        self.item_padding = xpadding, ypadding
 
-    def _create_grid(self):
+    def create_grid(self):
         """
         Setup the grid. After this function has has been called no modifications
         to the grid are possible.
@@ -135,208 +91,166 @@ class Grid(Group):
         @todo: make it possible to change the layout during runtime
         """
         # do some calculations
-        if self.spacing is None:
-            # no spacing is given. Get the number of rows and cols
-            # and device the remaining space as speacing and border
-            self.num_cols = int(self.width / self.cell_size[0])
-            self.num_rows = int(self.height / self.cell_size[1])
-            space_x = self.width / self.num_cols - self.cell_size[0]
-            space_y = self.height / self.num_rows - self.cell_size[1]
-            # size of cells
-            self._col_size = self.cell_size[0] + space_x
-            self._row_size = self.cell_size[1] + space_y
+        padding_x, padding_y = self.item_padding
+        if padding_x is None:
+            # no padding is given. Get the number fitting items
+            # and devide the remaining space as paddingand border
+            self.num_items_x = int(self.width / self.cell_size[0])
+            padding_x = self.width / self.num_items_x - self.cell_size[0]
+            self.item_width = self.cell_size[0] + padding_x
         else:
-            # spacing is given, let's see how much we can fit into here
-            space_x, space_y = self.spacing
-            # size of cells
-            self._col_size = self.cell_size[0] + space_x
-            self._row_size = self.cell_size[1] + space_y
+            self.item_width = self.cell_size[0] + padding_x
             # now that we know the sizes check how much items fit
-            self.num_cols = int(self.width / self._col_size)
-            self.num_rows = int(self.height / self._row_size)
+            self.num_items_x = int(self.width / self.item_width)
+        if padding_y is None:
+            # no padding is given. Get the number fitting items
+            # and devide the remaining space as padding and border
+            self.num_items_y = int(self.height / self.cell_size[1])
+            padding_y = self.height / self.num_items_y - self.cell_size[1]
+            self.item_height = self.cell_size[1] + padding_y
+        else:
+            self.item_height = self.cell_size[1] + padding_y
+            # now that we know the sizes check how much items fit
+            self.num_items_y = int(self.height / self.item_height)
+        self.item_padding = padding_x, padding_y
         # we now center the grid by default
-        x0 = (self.width - self.num_cols * self._col_size + space_x) / 2
-        y0 = (self.height - self.num_rows * self._row_size + space_y) / 2
+        x0 = (self.width - self.num_items_x * self.item_width + padding_x) / 2
+        y0 = (self.height - self.num_items_y * self.item_height + padding_y) / 2
+        self.clip = (x0 - padding_x, y0 - padding_y), \
+            (self.num_items_x * self.item_width + padding_x, self.num_items_y * self.item_height + padding_y)
+        self.location = (0, 0)
         # list of rendered items
-        self._rendered = {}
-        # animations for row and col scrolling
-        self.__row_animation = None
-        self.__col_animation = None
+        self.item_widgets = {}
         # group of items
-        self.items = ItemGroup((x0, y0))
-        self.add(self.items)
+        self.item_group = AbstractGroup((x0, y0))
+        self.add(self.item_group)
+        self.create_grid = None
 
-    def __getattr__(self, attr):
-        """
-        Generic getattr function called when variables created by grid
-        creation are needed.
-        """
-        if self._create_grid is not None:
-            self._create_grid()
-            self._create_grid = None
-            # call again, now the attribute should be there
-            return getattr(self, attr)
-        # we do not know that attribute
-        raise AttributeError("'Grid' object has no attribute '%s'" % attr)
-
-    @kaa.synchronized()
-    def scroll_by(self, (rows, cols), secs, force=False):
-        """
-        Scroll by rows and cols cells
-
-        @param rows, cols: rows and cols to scroll
-        @param secs: runtime of the animation
-        """
-        # This function will force grid creation
-        while not force:
-            # check if it possible to go there
-            if self.__orientation == Grid.HORIZONTAL:
-                num = (self.items.cell0[0] + rows) * self.num_rows + \
-                      (self.items.cell0[1] + cols)
-            if self.__orientation == Grid.VERTICAL:
-                num = (self.items.cell0[1] + cols) * self.num_cols + \
-                      (self.items.cell0[0] + rows)
-            if num >= 0 and num < len(self.__child_listing):
-                # there is an item in the upper left corner
-                break
-            # remove one cell in scroll, start with rows and use cols if
-            # there are no rows to scroll anymore
-            if rows:
-                rows -= (rows / abs(rows))
-            else:
-                cols -= (cols / abs(cols))
-        self.scroll_to((self.items.cell0[0] + rows, self.items.cell0[1] + cols), secs)
-
-    @kaa.synchronized()
-    def scroll_to(self, (row, col), secs):
-        """
-        Scroll to row / cell position
-
-        @param row, col: end row and col
-        @param secs: runtime of the animation
-        """
-        # This function will force grid creation
-        if self.items.cell0[0] != row:
-            # need to scroll rows
-            if self.__row_animation and self.__row_animation.is_playing:
-                self.__row_animation.stop()
-            self.items.cell0[0] = row
-            x = self.items.cell0[0] * self._col_size + self.items.x - self.items.x0
-            if secs == 0:
-                self._scroll_grid(x, 0)
-            else:
-                self.__row_animation = self.animate(secs)
-                self.__row_animation.behave(ScrollBehaviour((x, 0), '_scroll_grid'))
-        if self.items.cell0[1] != col:
-            # need to scroll cols
-            if self.__col_animation and self.__col_animation.is_playing:
-                self.__col_animation.stop()
-            self.items.cell0[1] = col
-            y = self.items.cell0[1] * self._row_size + self.items.y - self.items.y0
-            if secs == 0:
-                self._scroll_grid(0, y)
-            else:
-                self.__col_animation = self.animate(secs)
-                self.__col_animation.behave(ScrollBehaviour((0, y), '_scroll_grid'))
-
-    @kaa.synchronized()
-    def _scroll_grid(self, x, y):
-        """
-        Callback from the animation
-        """
-        self.items.x -= x
-        self.items.y -= y
-        self._queue_rendering()
-        self._queue_sync_properties('grid')
-
-    def _candy_create_item(self, item_num, pos_x, pos_y):
+    def create_item(self, item_num, pos_x, pos_y):
         """
         Render one child
         """
-        if item_num < 0 or item_num >= len(self.__child_listing):
-            self._rendered[(pos_x, pos_y)] = None
+        if item_num < 0 or item_num >= len(self.items):
+            self.item_widgets[(pos_x, pos_y)] = None
             return
         # calculate the size where the child should be
-        child_x = pos_x * self._col_size
-        child_y = pos_y * self._row_size
-        if (child_x + self.cell_size[0] < -self.items.x) or \
-               (child_y + self.cell_size[1] < -self.items.y) or \
-               (child_x >= -self.items.x + self.width) or \
-               (child_y >= -self.items.y + self.height):
-            # refuse the create invisible child
-            return
+        child_x = pos_x * self.item_width
+        child_y = pos_y * self.item_height
         context = self.context.copy()
-        context[self.__child_context] = self.__child_listing[item_num]
-        child = self.__child_template(context=context)
+        context[self.cell_item] = self.items[item_num]
+        child = self.template(context=context)
         child.x = child_x
         child.y = child_y
         child.width, child.height = self.cell_size
-        self.items.add(child)
-        self._rendered[(pos_x, pos_y)] = child
+        self.item_group.add(child)
+        self.item_widgets[(pos_x, pos_y)] = child
         return child
 
-    def _candy_prepare(self):
+    def clear(self):
         """
-        Check for items to add because they are visible now
+        Clear the grid
         """
-        if self._obj and not 'grid' in self._sync_properties:
-            return
+        self.item_group.clear()
+        self.item_widgets = {}
+        self.queue_rendering()
 
-        # This function is highly optimized for fast rendering when there is nothing
-        # to change. Some code is duplicated for HORIZONTAL and VERTICAL but creating
-        # smaller code size increases the running time.
-
-        # current item left/top position in the grid
-        base_x = -int(self.items.x) / self._col_size
-        base_y = -int(self.items.y) / self._row_size
-        pos_x = base_x
-        pos_y = base_y
-        if self.__orientation == Grid.HORIZONTAL:
-            item_num = base_x * self.num_rows + base_y
-            while True:
-                if not (pos_x, pos_y) in self._rendered:
-                    self._candy_create_item(item_num, pos_x, pos_y)
-                item_num += 1
-                pos_y += 1
-                if pos_y - base_y >= self.num_rows:
-                    if not (pos_x, pos_y) in self._rendered:
-                        self._candy_create_item(item_num, pos_x, pos_y)
-                    pos_y = base_y
-                    pos_x += 1
-                    if pos_x - base_x > self.num_cols:
-                        break
+    def sync_prepare(self):
+        """
+        Prepare widget for the next sync with the backend
+        """
+        if self.create_grid:
+            self.create_grid()
+        if not super(Grid, self).sync_prepare():
+            return False
         if self.__orientation == Grid.VERTICAL:
-            item_num = base_y * self.num_cols + base_x
-            while True:
-                if not (pos_x, pos_y) in self._rendered:
-                    self._candy_create_item(item_num, pos_x, pos_y)
-                item_num += 1
-                pos_x += 1
-                if pos_x - base_x >= self.num_cols:
-                    if not (pos_x, pos_y) in self._rendered:
-                        self._candy_create_item(item_num, pos_x, pos_y)
-                    pos_x = base_x
-                    pos_y += 1
-                    if pos_y - base_y > self.num_rows:
-                        break
-        for x, y in self._rendered.keys()[:]:
-            if x < base_x - self.num_cols or y < base_y - self.num_rows or \
-               x > base_x + 2 * self.num_cols or y > base_y + 2 * self.num_rows:
-                child = self._rendered.pop((x,y))
-                if child:
-                    child.unparent()
-        return
+            max_x, max_y = self.location
+            for y in range(0, max_y + self.num_items_y):
+                for x in range(0, max_x + self.num_items_x):
+                    item_num = x + y * self.num_items_x
+                    if not (x, y) in self.item_widgets:
+                        self.create_item(item_num, x, y)
+        if self.__orientation == Grid.HORIZONTAL:
+            max_x, max_y = self.location
+            for x in range(0, max_x + self.num_items_x):
+                for y in range(0, max_y + self.num_items_y):
+                    item_num = x * self.num_items_y + y
+                    if not (x, y) in self.item_widgets:
+                        self.create_item(item_num, x, y)
+        return super(Grid, self).sync_prepare()
 
-    def _clutter_render(self):
+    def sync_context(self):
         """
-        Render the widget
+        Adjust to a new context
         """
-        if 'size' in self._sync_properties:
-            log.error('FIXME: kaa.candy.Grid does not support resize')
-            return
-        super(Grid, self)._clutter_render()
-        # FIXME: use the clip is a bad style, fading would be better
-        self._obj.set_clip(0, 0, int(self.inner_width), int(self.inner_height))
+        self.items = self.__items_provided
+
+    @property
+    def items(self):
+        """
+        Get list of items
+        """
+        return self.__items
+
+    @items.setter
+    def items(self, items):
+        """
+        Set list of items
+        """
+        self.__items_provided = items
+        if isinstance(items, (str, unicode)):
+            # items is a string, get it from the context
+            items = self.context.get(items)
+        if self.__items != items:
+            if self.__items:
+                # we already had a valid list of items.
+                self.clear()
+            self.__items = items
+
+    @kaa.synchronized()
+    def scroll_by(self, (x, y), secs, force=False):
+        """
+        Scroll by rows and cols cells
+
+        @param x, y: rows and cols to scroll
+        @param secs: runtime of the animation
+        """
+        # This function will force grid creation
+        if self.create_grid:
+            self.create_grid()
+        while not force:
+            # check if it possible to go there
+            if self.__orientation == Grid.HORIZONTAL:
+                num = (self.location[0] + x) * self.num_items_y + \
+                      (self.location[1] + y)
+            if self.__orientation == Grid.VERTICAL:
+                num = (self.location[1] + y) * self.num_items_x + \
+                      (self.location[0] + x)
+            if num >= 0 and num < len(self.items):
+                # there is an item in the upper left corner
+                break
+            # remove one cell in scroll, start with x and use y if
+            # there are no rows to scroll anymore
+            if x:
+                x -= (x / abs(x))
+            else:
+                y -= (y / abs(y))
+        self.scroll_to((self.location[0] + x, self.location[1] + y), secs)
+
+    @kaa.synchronized()
+    def scroll_to(self, (x, y), secs):
+        """
+        Scroll to row / cell position
+
+        @param x, y: end row and col
+        @param secs: runtime of the animation
+        """
+        if self.create_grid:
+            self.create_grid()
+        self.location = (x, y)
+        pos_x = -x * self.item_width + self.clip[0][0] + self.item_padding[0]
+        pos_y = -y * self.item_height + self.clip[0][1] + self.item_padding[1]
+        self.item_group.animate('EASE_OUT_CUBIC', secs, x=pos_x, y=pos_y)
+        self.queue_rendering()
 
     @classmethod
     def candyxml_parse(cls, element):
@@ -349,37 +263,31 @@ class Grid(Group):
         There is only one child element allowed, if more is needed you need
         to add a container as child with the real children in it.
         """
-        # scale cell-width and cell-height because the auto-scaler does not
-        # know about the variables
-        cell_width = element.get_scaled('cell-width', 0, int)
-        cell_height = element.get_scaled('cell-height', 1, int)
         subelement = element[0]
-        # if subelement width or height are the same of the grid it was
-        # copied by candyxml from the parent. Set it to cell width or height
-        if subelement.width is element.width:
-            subelement.width = cell_width
-        if subelement.height is element.height:
-            subelement.height = cell_height
-        # return dict
         orientation = Grid.HORIZONTAL
         if element.orientation and element.orientation.lower() == 'vertical':
             orientation = Grid.VERTICAL
+        if element.cell_width:
+            element.cell_width = int(element.cell_width)
+        if element.cell_height:
+            element.cell_height = int(element.cell_height)
         return super(Grid, cls).candyxml_parse(element).update(
             template=subelement.xmlcreate(), items=element.items,
-            cell_size=(cell_width, cell_height), cell_item=element.cell_item,
+            cell_size=(element.cell_width, element.cell_height), cell_item=element.cell_item,
             orientation=orientation)
+
 
 
 class SelectionGrid(Grid):
     """
     Grid with selection widget.
-    @note: see C{test/flickr.py} for an example
+    @note: see C{test/beacon.py} for an example
     """
 
     candyxml_style = 'selection'
 
     def __init__(self, pos, size, cell_size, cell_item, items, template,
-                 selection, orientation, spacing=None, context=None):
+                 selection, orientation, xpadding=None, ypadding=None, context=None):
         """
         Simple grid widget to show the items based on the template.
 
@@ -391,278 +299,73 @@ class SelectionGrid(Grid):
         @param template: child template for each cell
         @param selection: widget for the selection
         @param orientation: how to arange the grid: Grid.HORIZONTAL or Grid.VERTICAL
-        @param spacing: x,y values of space between two items. If set to None
-            the spacing will be calculated based on cell size and widget size
+        @param xpadding: x value of space between two items. If set to None
+            the padding will be calculated based on cell size and widget size
+        @param ypadding: y value of space between two items. If set to None
+            the padding will be calculated based on cell size and widget size
         @param context: the context the widget is created in
 
         """
-        self.behaviour = []
         super(SelectionGrid, self).__init__(pos, size, cell_size, cell_item, items,
-            template, orientation, spacing, context)
+            template, orientation, xpadding, ypadding, context)
         if is_template(selection):
             selection = selection()
         self.selection = selection
-        self.selection.lower_bottom()
-        self.add(self.selection)
-        self.__animation = None
 
-    def _create_grid(self):
+    def clear(self):
+        """
+        Clear the grid
+        """
+        super(SelectionGrid, self).clear()
+        self.item_group.add(self.selection)
+
+    def select(self, (x, y), secs):
+        """
+        Select a cell.
+
+        @param x, y: cell position to select
+        @param secs: runtime of the animation
+        """
+        if self.create_grid:
+            self.create_grid()
+        pos_x = x * self.item_width + self.selection.grid_adjust_x
+        pos_y = y * self.item_height + self.selection.grid_adjust_y
+        self.selection.animate('EASE_OUT_CUBIC', secs, x=pos_x, y=pos_y)
+        self.queue_rendering()
+
+    def create_grid(self):
         """
         Setup the grid. After this function has has been called no modifications
         to the grid are possible.
 
         @todo: make it possible to change the layout during runtime
         """
-        super(SelectionGrid, self)._create_grid()
-        self.items.modified = []
-        self.select((0, 0), 0)
-
-    def behave(self, behaviour, *args, **kwargs):
-        """
-        Add behaviour to be used for widgets covered by the selection
-
-        @param behaviour: Behaviour object or name registered to the behaviour
-           submodule. If a new is given, the Behaviour will be created with
-           the given arguments.
-        """
-        # This function will force grid creation
-        if isinstance(behaviour, str):
-            behaviour = create_behaviour(behaviour, *args, **kwargs)
-        self.behaviour.append(behaviour)
-        behaviour.apply(0, self.items.children)
-        self._queue_rendering()
-        self._queue_sync_properties('selection')
-        return self
-
-    def select(self, (col, row), secs):
-        """
-        Select a cell.
-
-        @param col, row: cell position to select
-        @param secs: runtime of the animation
-        """
-        # This function will force grid creation
-
-        # calculate x,y coordinates to move based on the current position
-        # This is the selection x0 if it would be on 0,0 + the row or col
-        # we want to select - our current position. After that add how items
-        # has scrolled. Sounds complicated but is correct.
-        x = (self.cell_size[0] - self.selection.width) / 2 + \
-            col * self._col_size - self.selection.x + self.items.x
-        y = (self.cell_size[1] - self.selection.height) / 2 + \
-            row * self._row_size - self.selection.y + self.items.y
-        if self.__animation and self.__animation.is_playing:
-            self.__animation.stop()
-        if secs:
-            self.__animation = self.animate(secs)
-            self.__animation.behave(ScrollBehaviour((x, y), '_scroll_listing'))
-        else:
-            self._scroll_listing(x, y)
-
-    def _scroll_grid(self, x, y):
-        """
-        Callback from the animation to scroll the grid
-        """
-        super(SelectionGrid, self)._scroll_grid(x, y)
-        self.selection.x -= x
-        self.selection.y -= y
-
-    def _scroll_listing(self, x, y):
-        """
-        Callback from the animation to scroll the listing
-        """
-        self.selection.x += x
-        self.selection.y += y
-        self._queue_rendering()
-        self._queue_sync_properties('selection')
-
-    def _candy_create_item(self, item_num, pos_x, pos_y):
-        """
-        Render one child
-        """
-        child = super(SelectionGrid, self)._candy_create_item(item_num, pos_x, pos_y)
-        if child:
-            for behaviour in self.behaviour:
-                behaviour.apply(0, [child])
-        return child
-
-    def _candy_prepare(self):
-        """
-        Check for items to be updated based on the behaviours
-        """
-        super(SelectionGrid, self)._candy_prepare()
-        if (self._obj and not 'selection' in self._sync_properties) or not self.behaviour:
-            return
-        x, y, width, height = self.selection.geometry
-        # current cell position of the selection bar
-        # get the items that could be affected by a behaviour and check
-        # if they are covered by the selection widget
-        base_x = int(x - self.items.x) / self._col_size
-        base_y = int(y - self.items.y) / self._row_size
-        in_area = []
-        for x0 in range(-1, 2):
-            for y0 in range(-1, 2):
-                child = self._rendered.get((base_x + x0, base_y + y0))
-                if child is None:
-                    # not rendered
-                    continue
-                px = abs(child.x + self.items.x - x)
-                py = abs(child.y + self.items.y - y)
-                if px > width or py > height:
-                    # not covered
-                    continue
-                coverage = (100 - 100 * px / width) * (100 - 100 * py / height)
-                if coverage:
-                    # x percent * y percent coverage
-                    in_area.append((coverage, child))
-        # sort by coverage and draw from the lowest
-        in_area.sort(lambda x,y: cmp(x[0], y[0]))
-        modified = self.items.modified
-        self.items.modified = []
-        for coverage, child in in_area:
-            child.raise_top()
-            for behaviour in self.behaviour:
-                behaviour.apply(float(coverage) / 10000 * MAX_ALPHA, [child])
-            if child in modified:
-                modified.remove(child)
-            self.items.modified.append(child)
-        # reset children covered before and not anymore
-        for behaviour in self.behaviour:
-            behaviour.apply(0, modified)
+        super(SelectionGrid, self).create_grid()
+        self.item_group.add(self.selection)
+        self.selection.grid_adjust_x = self.selection.x = \
+            (self.item_width - self.item_padding[0] - self.selection.width) / 2
+        self.selection.grid_adjust_y = self.selection.y = \
+            (self.item_height - self.item_padding[1] - self.selection.height) / 2
 
     @classmethod
     def candyxml_parse(cls, element):
+        """
+        Parse the candyxml element for parameter to create the widget. Example::
+          <grid width='100' height='100' cell-width='30' cell-height='30'
+              cell-item='item' items='listing'>
+              <image filename='$item.filename'/>
+              <selection>
+                  <rectangle/>
+              </selection/>
+          </grid>
+        There are only the two children element allowed, if more is
+        needed you need to add a container as child with the real
+        children in it.
+        """
         selection = None
         for child in element:
             if child.node == 'selection':
                 selection = child[0].xmlcreate()
                 element.remove(child)
         return super(SelectionGrid, cls).candyxml_parse(element).update(
-            selection=selection)
-
-
-class SelectionGrid2(Grid):
-    """
-    Grid with selection widget. Unlike SelectionGrid the selection
-    does not move but will fade in and out as highlight border around
-    the item.
-    """
-
-    candyxml_style = 'opacity'
-
-    def __init__(self, pos, size, cell_size, cell_item, items, template,
-                 selection, orientation, spacing=None, context=None):
-        """
-        Simple grid widget to show the items based on the template.
-
-        @param pos: (x,y) position of the widget or None
-        @param size: (width,height) geometry of the widget.
-        @param cell_size: (width,height) of each cell
-        @param cell_item: string how the cell item should be added to the context
-        @param items: list of objects or object name in the context
-        @param template: child template for each cell
-        @param selection: widget for the selection
-        @param orientation: how to arange the grid: Grid.HORIZONTAL or Grid.VERTICAL
-        @param spacing: x,y values of space between two items. If set to None
-            the spacing will be calculated based on cell size and widget size
-        @param context: the context the widget is created in
-
-        """
-        self.behaviour = []
-        super(SelectionGrid2, self).__init__(pos, size, cell_size, cell_item, items,
-            template, orientation, spacing, context)
-        if not is_template(selection):
-            raise RuntimeError('selection must be a template')
-        self._selection_template = selection
-        self._selections = []
-
-    def _create_grid(self):
-        """
-        Setup the grid. After this function has has been called no modifications
-        to the grid are possible.
-
-        @todo: make it possible to change the layout during runtime
-        """
-        super(SelectionGrid2, self)._create_grid()
-        self.select((0, 0), 0)
-
-    def behave(self, behaviour, *args, **kwargs):
-        """
-        Add behaviour to be used for widgets covered by the selection
-
-        @param behaviour: Behaviour object or name registered to the behaviour
-           submodule. If a new is given, the Behaviour will be created with
-           the given arguments.
-        """
-        # This function will force grid creation
-        if isinstance(behaviour, str):
-            behaviour = create_behaviour(behaviour, *args, **kwargs)
-        self.behaviour.append(behaviour)
-        behaviour.apply(0, [ c for c in self.items.children if not c in self._selections ])
-        self._queue_rendering()
-        return self
-
-    def _apply_behaviour(self, alpha_value, item_pos, start, stop):
-        obj = self._rendered.get(item_pos)
-        if not obj:
-            return
-        factor = float(alpha_value) / MAX_ALPHA
-        opacity = start + (stop - start) * factor
-        alpha_value = (MAX_ALPHA / 255) * opacity
-        for behaviour in self.behaviour:
-            behaviour.apply(alpha_value, [obj])
-
-    def select(self, (col, row), secs):
-        """
-        Select a cell.
-
-        @param col, row: cell position to select
-        @param secs: runtime of the animation
-        """
-        # This function will force grid creation
-        selection = self._selection_template()
-        selection.x = col * self._col_size
-        selection.y = row * self._row_size
-        selection._grid_item = col, row
-        self.items.add(selection)
-        selection.lower_bottom()
-        while self._selections and self._selections[0].opacity == 0:
-            # remove old selections
-            self._selections.pop(0).unparent()
-        if secs:
-            if self._selections and self._selections[-1].opacity:
-                callback = kaa.Callable(self._apply_behaviour, self._selections[-1]._grid_item, self._selections[-1].opacity, 0)
-                self._selections[-1].animate(secs, callback=callback).behave('opacity', self._selections[-1].opacity, 0)
-            selection.opacity = 0
-            callback = kaa.Callable(self._apply_behaviour, selection._grid_item, 0, 255)
-            selection.animate(secs, callback=callback).behave('opacity', 0, 255)
-        else:
-            for old_selection in self._selections:
-                old_selection.opacity = 0
-                self._apply_behaviour(MAX_ALPHA, old_selection._grid_item, 255, 0)
-            self._apply_behaviour(MAX_ALPHA, selection._grid_item, 0, 255)
-        self._selections.append(selection)
-
-    def _candy_create_item(self, item_num, pos_x, pos_y):
-        """
-        Render one child
-        """
-        child = super(SelectionGrid2, self)._candy_create_item(item_num, pos_x, pos_y)
-        if child:
-            for selection in self._selections:
-                if selection._grid_item == (pos_x, pos_y):
-                    alpha_value = (MAX_ALPHA / 255) * selection.opacity
-                    for behaviour in self.behaviour:
-                        behaviour.apply(alpha_value, [child])
-                    selection.lower_bottom()
-        return child
-
-    @classmethod
-    def candyxml_parse(cls, element):
-        selection = None
-        for child in element:
-            if child.node == 'selection':
-                selection = child[0].xmlcreate()
-                element.remove(child)
-        return super(SelectionGrid2, cls).candyxml_parse(element).update(
             selection=selection)

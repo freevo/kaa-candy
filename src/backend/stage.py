@@ -1,8 +1,11 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# __init__.py - main widget module
+# stage - Backend stage class
 # -----------------------------------------------------------------------------
-# $Id:$
+# $Id: $
+#
+# This file is imported by the backend process in the clutter
+# mainloop. Importing and using clutter is thread-safe.
 #
 # -----------------------------------------------------------------------------
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
@@ -31,15 +34,39 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = []
+import clutter
 
-# kaa imports
-import kaa.utils
+class Stage(object):
 
-# load all widget files in this directory
-for name, module in kaa.utils.get_plugins(location=__file__).items():
-    if isinstance(module, Exception):
-        raise ImportError('error importing %s: %s' % (name, module))
-    for widget in module.__all__:
-        __all__.append(widget)
-        globals()[widget] = getattr(module, widget)
+    def create(self):
+        """
+        Create the clutter stage object
+        """
+        self.obj = clutter.Stage()
+        self.obj.connect('key-press-event', self.handle_key)
+        self.keysyms = {}
+        # get list of clutter key code. We must access the module
+        # first before it is working, therefor we access Left.
+        clutter.keysyms.Left
+        for name in dir(clutter.keysyms):
+            if len(name) == 2 and name.startswith('_'):
+                self.keysyms[getattr(clutter.keysyms, name)] = name[1]
+            if not name.startswith('_'):
+                self.keysyms[getattr(clutter.keysyms, name)] = name
+
+    def handle_key(self, stage, event):
+        """
+        Translate clutter keycode to name and emit signal in main loop. This
+        function is a callback from clutter.
+        """
+        key = self.keysyms.get(event.keyval)
+        if key is not None:
+            self.server.send_event('key-press', key)
+
+    def init(self, size):
+        """
+        Set the size and the base group
+        """
+        self.obj.set_size(*size)
+        self.obj.set_color(clutter.Color(0, 0, 0, 0xff))
+        self.obj.show()

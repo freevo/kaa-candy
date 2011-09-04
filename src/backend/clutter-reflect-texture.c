@@ -46,7 +46,6 @@
 
 #include <GL/gl.h>
 #include <clutter/clutter.h>
-
 #include <cogl/cogl.h>
 
 #include "clutter-reflect-texture.h"
@@ -74,80 +73,84 @@ struct _ClutterReflectTexturePrivate
 static void
 clutter_reflect_texture_paint (ClutterActor *actor)
 {
-    ClutterReflectTexturePrivate *priv;
-    ClutterReflectTexture *texture;
-    ClutterClone          *clone;
-    ClutterTexture        *parent;
-    guint                  width, height;
-    gfloat                 fwidth, fheight;
-    gint                   r_height;
-    gint                   opacity;
-    gint                   bottom;
-  
-    CoglHandle        cogl_texture;
-    CoglTextureVertex tvert[4];
-    CoglFixed      rty;
-  
-    texture = CLUTTER_REFLECT_TEXTURE (actor);
-    clone = CLUTTER_CLONE (actor);
-  
-    parent = (ClutterTexture*) clutter_clone_get_source (clone);
-    if (!parent) 
-      return;
-    
-    if (!CLUTTER_ACTOR_IS_REALIZED (parent))
-      clutter_actor_realize (CLUTTER_ACTOR (parent));
-  
-    cogl_texture = clutter_texture_get_cogl_texture (parent);
-    if (cogl_texture == COGL_INVALID_HANDLE)
-      return;
-  
-    priv = texture->priv;
-  
-    clutter_actor_get_size (CLUTTER_ACTOR(parent), &fwidth, &fheight);
-    width = fwidth;
-    height = fheight;
-        
-    if (!height)
-        // probably won't happen, but just in case, to avoid divide by zero.
-        return;
-  
-    r_height = priv->reflection_height;
-    bottom = priv->reflect_bottom;
-    opacity = clutter_actor_get_opacity(actor);
-  
-    if (r_height < 0 || r_height > height)
-      r_height = height;
-  
-  #define FX(x) COGL_FIXED_FROM_INT(x)
-  
-    rty = COGL_FIXED_FAST_DIV(FX(bottom ? height-r_height : r_height),FX(height));
-  
-    /* clockise vertices and tex coords and colors! */
-  
-    tvert[0].x = tvert[0].y = tvert[0].z = 0;
-    tvert[0].tx = 0; tvert[0].ty = bottom ? COGL_FIXED_1 : rty;
-    cogl_color_set_from_4ub(&tvert[0].color, 0xff, 0xff, 0xff, bottom ? opacity : 0);
-  
-    tvert[1].x = FX(width); tvert[1].y = tvert[1].z = 0;
-    tvert[1].tx = COGL_FIXED_1; tvert[1].ty = bottom ? COGL_FIXED_1 : rty;
-    cogl_color_set_from_4ub(&tvert[1].color, 0xff, 0xff, 0xff, bottom ? opacity : 0);
-  
-    tvert[2].x = FX(width); tvert[2].y = FX(r_height); tvert[2].z = 0;
-    tvert[2].tx = COGL_FIXED_1; tvert[2].ty = bottom ? rty : 0;
-    cogl_color_set_from_4ub(&tvert[3].color, 0xff, 0xff, 0xff, bottom ? opacity : 0);
-  
-    tvert[3].x = 0; tvert[3].y = FX(r_height); tvert[3].z = 0;
-    tvert[3].tx = 0; tvert[3].ty = bottom ? rty : 0;
-    cogl_color_set_from_4ub(&tvert[3].color, 0xff, 0xff, 0xff, bottom ? opacity : 0);
-  
-    cogl_push_matrix ();
-  
-    cogl_set_source_texture(cogl_texture);
-    /* FIXME: this does not work as expected */
-    /* cogl_polygon(tvert, 4, TRUE); */
-    
-    cogl_pop_matrix ();
+//     ClutterReflectTexturePrivate *priv;
+//     ClutterReflectTexture *texture;
+//     ClutterClone          *clone;
+//     ClutterTexture        *parent;
+//     guint                  width, height;
+//     gfloat                 fwidth, fheight;
+//     gint                   r_height;
+//     gint                   opacity;
+//     gint                   bottom;
+//   
+//     CoglHandle        cogl_texture;
+//     CoglTextureVertex tvert[4];
+//     CoglFixed      rty;
+//   
+//     texture = CLUTTER_REFLECT_TEXTURE (actor);
+//     clone = CLUTTER_CLONE (actor);
+//   
+//     parent = (ClutterTexture*) clutter_clone_get_source (clone);
+//     if (!parent) 
+//       return;
+//     
+//     if (!CLUTTER_ACTOR_IS_REALIZED (parent))
+//       clutter_actor_realize (CLUTTER_ACTOR (parent));
+//   
+//     cogl_texture = clutter_texture_get_cogl_texture (parent);
+//     if (cogl_texture == COGL_INVALID_HANDLE)
+//       return;
+//   
+//     priv = texture->priv;
+//   
+//     clutter_actor_get_size (CLUTTER_ACTOR(parent), &fwidth, &fheight);
+//     width = fwidth;
+//     height = fheight;
+//         
+//     if (!height)
+//         // probably won't happen, but just in case, to avoid divide by zero.
+//         return;
+//   
+//     r_height = priv->reflection_height;
+//     bottom = priv->reflect_bottom;
+//     opacity = clutter_actor_get_opacity(actor);
+//   
+//     if (r_height < 0 || r_height > height)
+//       r_height = height;
+//   
+//   #define FX(x) COGL_FIXED_FROM_INT(x)
+//   
+//     rty = COGL_FIXED_FAST_DIV(FX(bottom ? height-r_height : r_height),FX(height));
+//   
+//     /* clockise vertices and tex coords and colors! */
+//   
+//     tvert[0].x = tvert[0].y = tvert[0].z = 0;
+//     tvert[0].tx = 0; tvert[0].ty = bottom ? COGL_FIXED_1 : rty;
+//     tvert[0].color.red = tvert[0].color.green = tvert[0].color.blue = 0xff;
+//     tvert[0].color.alpha = bottom ? opacity : 0;
+//   
+//     tvert[1].x = FX(width); tvert[1].y = tvert[1].z = 0;
+//     tvert[1].tx = COGL_FIXED_1; tvert[1].ty = bottom ? COGL_FIXED_1 : rty;
+//     tvert[1].color.red = tvert[1].color.green = tvert[1].color.blue = 0xff;
+//     tvert[1].color.alpha = bottom ? opacity : 0;
+//   
+//     tvert[2].x = FX(width); tvert[2].y = FX(r_height); tvert[2].z = 0;
+//     tvert[2].tx = COGL_FIXED_1; tvert[2].ty = bottom ? rty : 0;
+//     tvert[2].color.red = tvert[2].color.green = tvert[2].color.blue = 0xff;
+//     tvert[2].color.alpha = bottom ? 0 : opacity;
+//   
+//     tvert[3].x = 0; tvert[3].y = FX(r_height); tvert[3].z = 0;
+//     tvert[3].tx = 0; tvert[3].ty = bottom ? rty : 0;
+//     tvert[3].color.red = tvert[3].color.green = tvert[3].color.blue = 0xff;
+//     tvert[3].color.alpha = bottom ? 0 : opacity;
+//   
+//     cogl_push_matrix ();
+//   
+//     cogl_set_source_texture(cogl_texture);
+//     /* FIXME: this does not work as expected */
+//     /* cogl_polygon(tvert, 4, TRUE); */
+//     
+//     cogl_pop_matrix ();
 }
 
 static void

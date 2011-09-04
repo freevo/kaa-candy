@@ -5,13 +5,15 @@
 # $Id$
 #
 # -----------------------------------------------------------------------------
-# kaa-candy - Third generation Canvas System using Clutter as backend
-# Copyright (C) 2008-2009 Dirk Meyer, Jason Tackaberry
+# kaa-candy - Fourth generation Canvas System using Clutter as backend
+# Copyright (C) 2011 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
 #
-# Please see the file AUTHORS for a complete list of authors.
+# Based on various previous attempts to create a canvas system for
+# Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
+# AUTHORS for a complete list of authors.
 #
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version
@@ -35,60 +37,58 @@ __all__ = [ 'parse', 'register', 'get_class' ]
 import os
 import logging
 import xml.sax
+import imp
 
 # kaa.candy imports
-import core
+from core import Color, Font
 
 # get logging object
 log = logging.getLogger('kaa.candy')
+
 
 class ElementDict(dict):
 
     def __getattr__(self, attr):
         return self.get(attr)
 
-def scale_attributes(attrs, scale):
-    """
-    Scale attributes based on the screen geometry
-    """
-    calc_attrs = {}
-    for key, value in attrs.items():
-        # FIXME: make sure a value > 0 is always > 0 even after scaling
-        if key in ('x', 'xpadding'):
-            value = int(scale[0] * int(value))
-        elif key in ('y', 'ypadding'):
-            value = int(scale[1] * int(value))
-        elif key == 'width' and not value.endswith('%'):
-                x1 = int(scale[0] * int(attrs.get('x', 0)))
-                x2 = int(scale[0] * (int(attrs.get('x', 0)) + int(value)))
-                value = x2 - x1
-        elif key == 'height' and not value.endswith('%'):
-            y1 = int(scale[1] * int(attrs.get('y', 0)))
-            y2 = int(scale[1] * (int(attrs.get('y', 0)) + int(value)))
-            value = y2 - y1
-        elif key in ('radius', 'size', 'spacing'):
-            value = int(scale[1] * int(value))
-        elif key.find('color') != -1:
-            value = core.Color(value)
-        elif key.find('font') != -1:
-            value = core.Font(value)
-            value.size = int(scale[1] * value.size)
-        calc_attrs[str(key).replace('-', '_')] = value
-    return calc_attrs
-
 
 class Element(object):
     """
     XML node element.
     """
-    def __init__(self, node, parent, attrs, scale):
+    def __init__(self, node, parent, attrs):
         self.content = ''
         self.node = node
         # note: circular reference
         self._parent = parent
-        self._scale = scale
-        self._attrs = scale_attributes(attrs, scale)
+        self._attrs = {}
+        for key, value in attrs.items():
+            if key in ('x', 'xpadding', 'y', 'ypadding'):
+                value = int(value)
+            elif key == 'width' and not value.endswith('%'):
+                x1 = int(attrs.get('x', 0))
+                x2 = int(attrs.get('x', 0)) + int(value)
+                value = x2 - x1
+            elif key == 'height' and not value.endswith('%'):
+                y1 = int(attrs.get('y', 0))
+                y2 = int(attrs.get('y', 0)) + int(value)
+                value = y2 - y1
+            elif key in ('radius', 'size', 'spacing'):
+                value = int(value)
+            elif key.find('color') != -1:
+                value = Color(value)
+            elif key.find('font') != -1:
+                value = Font(value)
+                value.size = int(value.size)
+            self._attrs[str(key).replace('-', '_')] = value
         self._children = []
+
+    @property
+    def candyxml(self):
+        root = self._parent
+        while getattr(root, '_parent', None) is not None:
+            root = root._parent
+        return root
 
     def __iter__(self):
         """
@@ -155,32 +155,21 @@ class Element(object):
         """
         self._children.remove(child)
 
-    def get_scale_factor(self):
-        """
-        Return scale factor for geometry values.
-        """
-        return self._scale
-
-    def get_scaled(self, attr, pos, type):
-        """
-        Get attribute scaled.
-        """
-        return type(self._scale[0] * type(self._attrs.get(attr.replace('-', '_'))))
 
 class CandyXML(xml.sax.ContentHandler):
     """
     candyxml parser.
     """
-    def __init__(self, data, geometry, elements=None):
+    def __init__(self, data, elements=None, path=None):
         xml.sax.ContentHandler.__init__(self)
         self._elements = elements or ElementDict()
         # Internal stuff
-        self._scale = None
-        self._geometry = geometry
         self._root = None
         self._current = None
         self._stack = []
         self._names = []
+        self._path = path
+        self.scripts = {}
         self._parser = xml.sax.make_parser()
         self._parser.setContentHandler(self)
         if data.find('<') >= 0:
@@ -205,18 +194,6 @@ class CandyXML(xml.sax.ContentHandler):
         """
         if self._root is None:
             self._root = name, attrs
-            self._scale = 1.0, 1.0
-            if attrs.get('geometry'):
-                # candyxml tag has geometry information for scaling
-                w, h = [ int(v) for v in attrs['geometry'].split('x') ]
-                self.width, self.height = w, h
-                if self._geometry:
-                    self._scale = float(self._geometry[0]) / w, float(self._geometry[1]) / h
-            else:
-                # no geometry information. Let us hope we have something from the stage
-                if not self._geometry:
-                    raise RuntimeError('no geometry information')
-                self.width, self.height = self._geometry
             if not name in _parser.keys():
                 # must be a parent tag like cnadyxml around
                 # everything. This means we may have more than one
@@ -227,7 +204,7 @@ class CandyXML(xml.sax.ContentHandler):
         if name == 'alias' and len(self._stack) == 0:
             self._names.append(attrs['name'])
             return
-        element = Element(name, self._current or self, attrs, self._scale)
+        element = Element(name, self._current or self, attrs)
         if self._current is not None:
             self._stack.append(self._current)
             self._current._children.append(element)
@@ -240,12 +217,23 @@ class CandyXML(xml.sax.ContentHandler):
         SAX Callback.
         """
         if self._current:
-            self._current.content = self._current.content.strip()
+            if self._current.content.strip().find('\n') == -1:
+                self._current.content = self._current.content.strip()
         if len(self._stack):
             self._current = self._stack.pop()
         elif name == 'alias':
             # alias for high level element, skip
             return
+        elif name == 'script':
+            if self._path:
+                name = os.path.splitext(self._current.filename)[0]
+                (file, filename, data) = imp.find_module(name, [ self._path ])
+                module = imp.load_module(name, file, filename, data)
+                for m in dir(module):
+                    if not m.startswith('_'):
+                        self.scripts[m] = getattr(module, m)
+            self._current = None
+            self._names = []
         elif name != self._root[0]:
             screen = self._current.xmlcreate()
             if not self._elements.get(name):
@@ -263,22 +251,21 @@ class CandyXML(xml.sax.ContentHandler):
             self._current.content += c
 
 
-def parse(data, size=None, elements=None):
+def parse(data, elements=None):
     """
     Load a candyxml file based on the given screen resolution.
     @param data: filename of the XML file to parse or XML data
-    @param size: width and height of the window to adjust values in the XML file
     @returns: root element attributes and dict of parsed elements
     """
     if not os.path.isdir(data):
-        return CandyXML(data, size, elements).get_elements()
+        return CandyXML(data, elements).get_elements()
     attributes = {}
     for f in os.listdir(data):
         if not f.endswith('.xml'):
             continue
         f = os.path.join(data, f)
         try:
-            a, elements = CandyXML(f, size, elements).get_elements()
+            a, elements = CandyXML(f, elements, data).get_elements()
             attributes.update(a)
         except Exception, e:
             log.exception('parse error in %s', f)

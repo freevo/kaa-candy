@@ -1,17 +1,19 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# rectangle.py - Rectangle Widget
+# rectangle.py - rectangle widget
 # -----------------------------------------------------------------------------
-# $Id$
+# $Id:$
 #
 # -----------------------------------------------------------------------------
-# kaa-candy - Third generation Canvas System using Clutter as backend
-# Copyright (C) 2008-2009 Dirk Meyer, Jason Tackaberry
+# kaa-candy - Fourth generation Canvas System using Clutter as backend
+# Copyright (C) 2011 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
 #
-# Please see the file AUTHORS for a complete list of authors.
+# Based on various previous attempts to create a canvas system for
+# Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
+# AUTHORS for a complete list of authors.
 #
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version
@@ -31,21 +33,21 @@
 
 __all__ = [ 'Rectangle' ]
 
-from kaa.utils import property
-
-# kaa.candy imports
+from widget import Widget
 from ..core import Color
-from .. import backend
-from image import CairoTexture
 
-class Rectangle(CairoTexture):
-    """
-    Rectangle with border and round corners based on cairo.
-    """
+class Rectangle(Widget):
     candyxml_name = 'rectangle'
+    candy_backend = 'candy.Rectangle'
+    attributes = [ 'color', 'border_size', 'border_color', 'radius' ]
+
+    attribute_types = {
+        'color': Color,
+        'border_color': Color
+    }
 
     def __init__(self, pos=None, size=None, color=None, border_size=0,
-                 border_color=None, radius=0):
+                 border_color=None, radius=0, context=None):
         """
         Create a Rectangle widget
 
@@ -57,111 +59,11 @@ class Rectangle(CairoTexture):
             not needed when border_size is 0.
         @param radius: radius for a rectangle with round edges.
         """
-        super(Rectangle, self).__init__(pos, size)
-        if color and not isinstance(color, Color):
-            color = Color(color)
-        if border_color and not isinstance(border_color, Color):
-            border_color = Color(border_color)
-        self.__color = color
-        self.__radius = radius
-        self.__border_size = border_size
-        self.__border_color = border_color
-
-    @property
-    def color(self):
-        return self.__color
-
-    @color.setter
-    def color(self, color):
-        if color and not isinstance(color, Color):
-            color = Color(color)
-        self.__color = color
-        self._queue_rendering()
-
-    @property
-    def border_size(self):
-        return self.__border_size
-
-    @border_size.setter
-    def border_size(self, size):
-        self.__border_size = size
-        self._queue_rendering()
-
-    @property
-    def border_color(self):
-        return self.__border_color
-
-    @border_color.setter
-    def border_color(self, color):
-        if color and not isinstance(color, Color):
-            color = Color(color)
-        self.__border_color = color
-        self._queue_rendering()
-
-    @property
-    def radius(self):
-        return self.__radius
-
-    @radius.setter
-    def radius(self, radius):
-        self.__radius = radius
-        self._queue_rendering()
-
-    def _clutter_render(self):
-        """
-        Render the widget
-        """
-        if not self.__radius:
-            # Use a clutter Rectangle here to make it faster
-            # FIXME: change _obj radius changes
-            if self._obj is None:
-                self._obj = backend.Rectangle()
-                self._obj.show()
-            self._clutter_set_obj_size()
-            self._obj.set_color(backend.Color(*self.__color))
-            if self.__border_color and self.__border_size:
-                self._obj.set_border_width(self.__border_size)
-                self._obj.set_border_color(backend.Color(*self.__border_color))
-            else:
-                self._obj.set_border_width(0)
-            return
-        super(Rectangle, self)._clutter_render()
-        context = self._obj.cairo_create()
-        stroke = self.__border_size or 1
-        width  = self.inner_width - 2 * stroke
-        height = self.inner_height - 2 * stroke
-        radius = min(self.__radius, width, height)
-        x0 = stroke
-        y0 = stroke
-        x1 = int(x0 + width)
-        y1 = int(y0 + height)
-        if self.__color:
-            context.set_source_rgba(*self.__color.to_cairo())
-            context.set_line_width(stroke)
-            context.move_to  (x0, y0 + radius)
-            context.curve_to (x0, y0, x0 , y0, x0 + radius, y0)
-            context.line_to (x1 - radius, y0)
-            context.curve_to (x1, y0, x1, y0, x1, y0 + radius)
-            context.line_to (x1 , y1 - radius)
-            context.curve_to (x1, y1, x1, y1, x1 - radius, y1)
-            context.line_to (x0 + radius, y1)
-            context.curve_to (x0, y1, x0, y1, x0, y1- radius)
-            context.close_path()
-            context.fill()
-        if self.__border_size and self.__border_color:
-            context.set_source_rgba(*self.__border_color.to_cairo())
-            context.set_line_width(stroke)
-            context.move_to  (x0, y0 + radius)
-            context.curve_to (x0 , y0, x0 , y0, x0 + radius, y0)
-            context.line_to (x1 - radius, y0)
-            context.curve_to (x1, y0, x1, y0, x1, y0 + radius)
-            context.line_to (x1 , y1 - radius)
-            context.curve_to (x1, y1, x1, y1, x1 - radius, y1)
-            context.line_to (x0 + radius, y1)
-            context.curve_to (x0, y1, x0, y1, x0, y1- radius)
-            context.close_path()
-            context.stroke()
-        del context
+        super(Rectangle, self).__init__(pos, size, context)
+        self.color = color
+        self.border_size = border_size
+        self.border_color = border_color
+        self.radius = radius
 
     @classmethod
     def candyxml_parse(cls, element):

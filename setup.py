@@ -6,7 +6,7 @@
 #
 # -----------------------------------------------------------------------------
 # kaa-candy - Third generation Canvas System using Clutter as backend
-# Copyright (C) 2008 Dirk Meyer, Jason Tackaberry
+# Copyright (C) 2008-2011 Dirk Meyer, Jason Tackaberry
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
@@ -42,7 +42,7 @@ except ImportError:
 
 if len(sys.argv) == 2 and sys.argv[1] == 'clean':
     for file in ('build', 'dist', 'src/version.py', 'MANIFEST',
-                 'src/backend/gen_libcandy.c', 'doc/html'):
+                 'src/backend/gen_libcandy.c'):
         if os.path.isdir(file):
             print 'removing %s' % file
             os.system('rm -rf %s' % file)
@@ -69,8 +69,8 @@ libcandy = Extension('kaa/candy/backend/libcandy', files)
 if not libcandy.check_library('clutter-1.0', '1.0.4'):
     print 'clutter-1.0 >= 1.0.4 not found'
     sys.exit(1)
-if not libcandy.check_library('pygobject-2.0', '2.16.0'):
-    print 'pygobject >= 2.16.0 not found'
+if not libcandy.check_library('pygobject-2.0', '2.18.0'):
+    print 'pygobject >= 2.18.0 not found'
     sys.exit(1)
 
 # check for pygobject-codegen to generate python bindings
@@ -81,12 +81,12 @@ if not pygobject_codegen:
     sys.exit(1)
 
 # check for pyclutter defs for pygobject-codegen
-for version in ('0.9', '1.0'):
+for version in ('1.0',):
     clutter_defs = os.popen('pkg-config pyclutter-%s --variable=defsdir' % version).read().strip()
     if clutter_defs:
         break
 else:
-    print 'pyclutter-0.9 not found'
+    print 'pyclutter-1.0 not found'
     sys.exit(1)
 # ok, add defs file to the path
 clutter_defs += '/clutter-base-types.defs'
@@ -112,9 +112,10 @@ for m in libcandy_modules:
 # now trigger the python magic
 setup(
     module = 'candy',
-    version = '0.0.9',
+    version = '0.0.1',
     license = 'LGPL',
     summary = 'Third generation Canvas System using Clutter as backend.',
     ext_modules  = [ libcandy ],
     namespace_packages = ['kaa']
 )
+

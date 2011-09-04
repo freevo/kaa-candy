@@ -1,17 +1,19 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# text.py - Text Widget
+# text.py - multiline text widget
 # -----------------------------------------------------------------------------
-# $Id$
+# $Id:$
 #
 # -----------------------------------------------------------------------------
-# kaa-candy - Third generation Canvas System using Clutter as backend
-# Copyright (C) 2008-2009 Dirk Meyer, Jason Tackaberry
+# kaa-candy - Fourth generation Canvas System using Clutter as backend
+# Copyright (C) 2011 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
 #
-# Please see the file AUTHORS for a complete list of authors.
+# Based on various previous attempts to create a canvas system for
+# Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
+# AUTHORS for a complete list of authors.
 #
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version
@@ -31,144 +33,70 @@
 
 __all__ = [ 'Text' ]
 
-# python imports
 import re
 
+# we need to import clutter here to calculate the size. Clutter itself
+# is never initialized and its main loop is not started. If someone
+# knows a better way to get the intrinsic size, please change this.
 import pango
+import clutter
 
-from kaa.utils import property
-
-# kaa.candy imports
-from ..core import Color, Font
-from .. import backend
 from widget import Widget
-
+from ..core import Color, Font
 
 class Text(Widget):
-    """
-    Complex text widget.
-    """
     candyxml_name = 'text'
-    context_sensitive = True
+    candy_backend = 'candy.Text'
+    attributes = [ 'color', 'font', 'text', 'align' ]
+    attribute_types = {
+        'color': Color,
+        'font': Font
+    }
 
-    _regexp_space = re.compile('[\n\t \r][\n\t \r]+')
-    _regexp_if = re.compile('#if(.*?):(.*?)#fi ?')
-    _regexp_eval = re.compile('\$([a-zA-Z][a-zA-Z0-9_\.]*)|\${([^}]*)}')
-    _regexp_br = re.compile(' *<br/> *')
-
-    __text = __text_eval = ''
-    __color = None
+    __intrinsic_size_param = None
+    __intrinsic_size_cache = None
 
     def __init__(self, pos, size, text, font, color, align=None, context=None):
         """
         Create Text widget. Unlike a Label a Text widget supports multi-line
         text and markup. See the pango markup documentation.
 
-        @note: setting yalign on a Text widget as no effect
-
         @param pos: (x,y) position of the widget or None
         @param size: (width,height) geometry of the widget
         @param text: text to show
         @param color: kaa.candy.Color to fill the text
-        @param align: xalign value, convenience to set Text.xalign
+        @param align: align value
         @param context: the context the widget is created in
         """
         super(Text, self).__init__(pos, size, context)
-        self.xalign = align
+        self.align = align or Widget.ALIGN_LEFT
         self.font = font
         self.text = text
         self.color = color
 
-    def _candy_context_sync(self, context):
+    def sync_layout(self, size):
         """
-        Set a new context.
-
-        @param context: dict of context key,value pairs
+        Sync layout changes and calculate intrinsic size based on the
+        parent's size.
         """
-        super(Text, self)._candy_context_sync(context)
-        # trigger new context evaluation
-        self.text = self.__text
-
-    @property
-    def text(self):
-        return self.__text
-
-    @text.setter
-    def text(self, text):
-        self.__text = text
-        def eval_expression(matchobj):
-            if self.context.get(matchobj.groups()[0], ''):
-                return unicode(matchobj.groups()[1])
-            return ''
-        def replace_context(matchobj):
-            # FIXME: maybe the string has markup to use
-            match = matchobj.groups()[0] or matchobj.groups()[1]
-            s = self.context.get(match, '')
-            if s is None:
-                return ''
-            return unicode(s).replace('&', '&amp;').replace('<', '&lt;').\
-                   replace('>', '&gt;')
-        if self.context:
-            # we have a context, use it
-            text = self._regexp_space.sub(' ', text)
-            text = self._regexp_if.sub(eval_expression, text)
-            text = self._regexp_eval.sub(replace_context, text).strip()
-        text = self._regexp_br.sub('\n', text)
-        if self.__text_eval != text:
-            self.__text_eval = text
-            self._queue_rendering()
-
-    @property
-    def color(self):
-        return self.__color
-
-    @color.setter
-    def color(self, color):
-        if not isinstance(color, Color):
-            color = Color(color)
-        self.__color = color
-        self._queue_rendering()
-
-    @property
-    def font(self):
-        return self.__font
-
-    @font.setter
-    def font(self, font):
-        if not isinstance(font, Font):
-            font = Font(font)
-        self.__font = font
-        self._queue_rendering()
-
-    def _clutter_render(self):
-        """
-        Render the widget
-        """
-        # FIXME: handle text larger than text widget size
-        if not self._obj or 'size' in self._sync_properties:
-            if not self._obj:
-                self._obj = backend.Text()
-                self._obj.show()
-            self._clutter_set_obj_size()
-        self._obj.set_line_wrap(True)
-        self._obj.set_line_wrap_mode(pango.WRAP_WORD_CHAR)
-        self._obj.set_use_markup(True)
-        self._obj.set_font_name("%s %spx" % (self.__font.name, self.__font.size))
-        self._obj.set_color(backend.Color(*self.__color))
-        self._obj.set_text(self.__text_eval)
-        self._intrinsic_size = self.inner_width, pango.units_to_double(self._obj.get_layout().get_size()[1])
-
-    def _clutter_sync_layout(self):
-        """
-        Layout the widget
-        """
-        super(Text, self)._clutter_sync_layout()
-        if self.xalign == Widget.ALIGN_LEFT:
-            self._obj.set_line_alignment(Text.ALIGN_LEFT)
-        if self.xalign == Widget.ALIGN_CENTER:
-            self._obj.set_line_alignment(Text.ALIGN_CENTER)
-        if self.xalign == Widget.ALIGN_RIGHT:
-            self._obj.set_line_alignment(Text.ALIGN_RIGHT)
+        super(Text, self).sync_layout(size)
+        width, height = self.size
+        if self.__intrinsic_size_param == (width, height, self.text, self.font.name, self.font.size):
+            self.intrinsic_size = self.__intrinsic_size_cache
+            return self.__intrinsic_size_cache
+        # ugly hack: we need clutter to help us get the size we need
+        obj = clutter.Text()
+        obj.set_size(width, height)
+        obj.set_line_wrap(True)
+        obj.set_line_wrap_mode(pango.WRAP_WORD_CHAR)
+        obj.set_use_markup(True)
+        obj.set_font_name("%s %spx" % (self.font.name, self.font.size))
+        obj.set_text(self.text)
+        self.__intrinsic_size_cache = pango.units_to_double(obj.get_layout().get_size()[0]), \
+            pango.units_to_double(obj.get_layout().get_size()[1])
+        self.__intrinsic_size_param = (width, height, self.text, self.font.name, self.font.size)
+        self.intrinsic_size = self.__intrinsic_size_cache
+        return self.__intrinsic_size_cache
 
     @classmethod
     def candyxml_parse(cls, element):

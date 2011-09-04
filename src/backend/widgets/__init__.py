@@ -1,19 +1,20 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# __init__.py - main widget module
+# widgets - backend files for the widgets
 # -----------------------------------------------------------------------------
 # $Id:$
 #
+# This directory contains the clutter code executed in the rendering
+# process and not the process importing kaa.candy.
+#
 # -----------------------------------------------------------------------------
-# kaa-candy - Fourth generation Canvas System using Clutter as backend
-# Copyright (C) 2011 Dirk Meyer
+# kaa-candy - Third generation Canvas System using Clutter as backend
+# Copyright (C) 2008-2011 Dirk Meyer, Jason Tackaberry
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
 #
-# Based on various previous attempts to create a canvas system for
-# Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
-# AUTHORS for a complete list of authors.
+# Please see the file AUTHORS for a complete list of authors.
 #
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version
@@ -33,13 +34,10 @@
 
 __all__ = []
 
-# kaa imports
 import kaa.utils
 
-# load all widget files in this directory
 for name, module in kaa.utils.get_plugins(location=__file__).items():
-    if isinstance(module, Exception):
-        raise ImportError('error importing %s: %s' % (name, module))
     for widget in module.__all__:
         __all__.append(widget)
         globals()[widget] = getattr(module, widget)
+

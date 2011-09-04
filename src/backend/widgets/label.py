@@ -1,8 +1,11 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# __init__.py - main widget module
+# label.py - label widget
 # -----------------------------------------------------------------------------
 # $Id:$
+#
+# This file is imported by the backend process in the clutter
+# mainloop. Importing and using clutter is thread-safe.
 #
 # -----------------------------------------------------------------------------
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
@@ -31,15 +34,36 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = []
+__all__ = [ 'Label' ]
 
-# kaa imports
-import kaa.utils
+import cairo
+import image
 
-# load all widget files in this directory
-for name, module in kaa.utils.get_plugins(location=__file__).items():
-    if isinstance(module, Exception):
-        raise ImportError('error importing %s: %s' % (name, module))
-    for widget in module.__all__:
-        __all__.append(widget)
-        globals()[widget] = getattr(module, widget)
+import clutter
+import core
+
+class Label(image.CairoTexture):
+
+    def update(self, modified):
+        """
+        Render the widget
+        """
+        super(Label, self).update(modified)
+        fade = self.font.get_width(self.text) > self.width
+        # draw new text string
+        context = self.obj.cairo_create()
+        context.set_operator(cairo.OPERATOR_SOURCE)
+        if self.color:
+            context.set_source_rgba(*self.color.to_cairo())
+        context.select_font_face(self.font.name, cairo.FONT_SLANT_NORMAL)
+        context.set_font_size(self.font.size)
+        if fade and self.color:
+            s = cairo.LinearGradient(0, 0, self.width, 0)
+            c = self.color.to_cairo()
+            s.add_color_stop_rgba(0, *c)
+            # 50 pixel fading
+            s.add_color_stop_rgba(1 - (50.0 / self.width), *c)
+            s.add_color_stop_rgba(1, c[0], c[1], c[2], 0)
+            context.set_source(s)
+        context.move_to(0, context.font_extents()[0])
+        context.show_text(self.text)

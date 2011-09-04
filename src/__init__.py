@@ -1,17 +1,19 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# kaa.candy - Third generation Canvas System using Clutter as backend
+# __init__.py - kaa.candy main entry point
 # -----------------------------------------------------------------------------
-# $Id$
+# $Id: $
 #
 # -----------------------------------------------------------------------------
-# kaa-candy - Third generation Canvas System using Clutter as backend
-# Copyright (C) 2008-2009 Dirk Meyer, Jason Tackaberry
+# kaa-candy - Fourth generation Canvas System using Clutter as backend
+# Copyright (C) 2011 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
 #
-# Please see the file AUTHORS for a complete list of authors.
+# Based on various previous attempts to create a canvas system for
+# Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
+# AUTHORS for a complete list of authors.
 #
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version
@@ -29,20 +31,18 @@
 #
 # -----------------------------------------------------------------------------
 
-import candyxml
-import config
+# python imports
+import sys
+import os
 
-# alignment (copied from kaa.candy.Widget)
-ALIGN_LEFT = 'left'
-ALIGN_RIGHT = 'right'
-ALIGN_TOP = 'top'
-ALIGN_BOTTOM = 'bottom'
-ALIGN_CENTER = 'center'
-ALIGN_SHRINK = 'shrink'
+if not sys.argv[0].startswith(os.path.dirname(__file__)):
+    # only import the submodules from the main application and not
+    # from the rendering backend process.
+    from core import Context, Color, Font
+    from modifier import Modifier, Properties, Eventhandler, Dependency
+    from template import is_template, Template
+    from widgets import *
+    from stage import Stage
 
-# import everything important for the submodules
-from core import *
-from eventhandler import *
-from animation import *
-from widgets import *
-from stage import *
+    import candyxml
+    import config

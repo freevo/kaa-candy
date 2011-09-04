@@ -1,17 +1,24 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# core.py - Helper classes and decorator
+# core.py - Core classes
 # -----------------------------------------------------------------------------
 # $Id$
 #
+# Note: this file is imported from the application using kaa.candy as
+# well as the rendering process. Therefore, no imports from this file
+# to other parts of kaa.candy are allowed to avoid strange side
+# effects.
+#
 # -----------------------------------------------------------------------------
-# kaa-candy - Third generation Canvas System using Clutter as backend
-# Copyright (C) 2008-2009 Dirk Meyer, Jason Tackaberry
+# kaa-candy - Fourth generation Canvas System using Clutter as backend
+# Copyright (C) 2011 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
 #
-# Please see the file AUTHORS for a complete list of authors.
+# Based on various previous attempts to create a canvas system for
+# Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
+# AUTHORS for a complete list of authors.
 #
 # This library is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License version
@@ -29,28 +36,24 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'is_template', 'Context', 'Color', 'Font', 'Modifier', 'Properties' ]
+__all__ = [ 'Context', 'Color', 'Font' ]
 
 # python imports
 import logging
 import cairo
 
+# kaa imports
+import kaa
+
 # get logging object
 log = logging.getLogger('kaa.candy')
 
-def is_template(obj):
-    """
-    Returns True if the given object is a kaa.candy template class. This function
-    is needed to check if a given widget is a real clutter widget or only a template
-    for creating one.
-    """
-    return getattr(obj, '__is_template__', False)
-
-
 class Context(dict):
 
-    def __init__(self, ctx):
-        super(Context, self).__init__(ctx.copy())
+    def __init__(self, ctx=None, **kwargs):
+        if ctx is not None:
+            super(Context, self).__init__(ctx.copy())
+        self.update(kwargs)
 
     def get(self, attr, default=None):
         if attr.startswith('$'):
@@ -66,6 +69,7 @@ class Context(dict):
 
     def __getattr__(self, attr):
         return self.get(attr)
+
 
 class Color(list):
     """
@@ -111,6 +115,9 @@ class Color(list):
         return [ x / 255.0 for x in self ]
 
 
+# helping cairo surface
+_font_cairo_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 10, 10)
+
 class Font(object):
     """
     Font object containing font name and font size
@@ -119,7 +126,6 @@ class Font(object):
     @ivar size: font size
     """
 
-    __cairo_surface = None
     __height_cache = {}
 
     ASCENT, TYPICAL, MAX_HEIGHT = range(3)
@@ -145,9 +151,7 @@ class Font(object):
             size = self.size
         info = self.__height_cache.get((self.name, size))
         if info is None:
-            if self.__cairo_surface is None:
-                self.__cairo_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 10, 10)
-            c = cairo.Context(self.__cairo_surface)
+            c = cairo.Context(_font_cairo_surface)
             c.select_font_face(self.name, cairo.FONT_SLANT_NORMAL)
             c.set_font_size(size)
             ascent, descent = c.font_extents()[:2]
@@ -161,9 +165,7 @@ class Font(object):
         """
         Get width of the given string
         """
-        if self.__cairo_surface is None:
-            self.__cairo_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 10, 10)
-        c = cairo.Context(self.__cairo_surface)
+        c = cairo.Context(_font_cairo_surface)
         c.select_font_face(self.name, cairo.FONT_SLANT_NORMAL)
         c.set_font_size(self.size)
         # add x_bearing to width (maybe use x_advance later)
@@ -182,98 +184,7 @@ class Font(object):
                 self.get_height(size=size)
             if self.__height_cache.get((self.name, size))[Font.MAX_HEIGHT] > height:
                 f = Font(self.name)
-                f.size = size
+                f.size = size - 1
                 return f
             last = size
             size += 1
-
-
-class Modifier(object):
-    """
-    Modifier base class for classes that change widgets on creation by
-    templates. In the XML file they are added as subnode to the widget
-    to change. Examples are Properties and ReflectionModifier.
-    """
-
-    class __metaclass__(type):
-        def __new__(meta, name, bases, attrs):
-            cls = type.__new__(meta, name, bases, attrs)
-            if 'candyxml_name' in attrs.keys():
-                if cls.candyxml_name in Modifier._candyxml_modifier:
-                    raise RuntimeError('%s already defined' % cls.candyxml_name)
-                Modifier._candyxml_modifier[cls.candyxml_name] = cls
-            return cls
-
-    _candyxml_modifier = {}
-
-    def modify(self, widget):
-        """
-        Modify the given widget.
-        @param widget: widget to modify
-        @returns: changed widget (may be the same)
-        """
-        raise NotImplementedError
-
-    @classmethod
-    def candyxml_create(cls, element):
-        """
-        Create the modifier for the given element.
-
-        @note: do not call this function from inheriting functions. The name
-            is the same but the logic is different. This functions calls the
-            implementation variant, not the other way around.
-        """
-        cls = Modifier._candyxml_modifier.get(element.node)
-        if cls is None:
-            return cls
-        return cls.candyxml_create(element)
-
-
-class Properties(dict, Modifier):
-    """
-    Properties class to apply the given properties to a widget. This is a
-    dictionary for clutter functions to call after the widget is created.
-    It is used by candyxml and the animation submodule.
-    """
-
-    #: candyxml name
-    candyxml_name = 'properties'
-
-    def modify(self, widget):
-        """
-        Apply to the given widget.
-
-        @param widget: a kaa.candy.Widget
-        """
-        for key, value in self.items():
-            setattr(widget, key, value)
-        return widget
-
-    @classmethod
-    def candyxml_create(cls, element):
-        """
-        Parse the candyxml element and create a Properties object::
-
-          <widget_or_animation>
-            <properties key=value key=value>
-          </widget_or_animation>
-
-        Possible keys are C{opacity} (int), C{depth} (int),
-        C{scale} (float,float), C{anchor_point} (float,float)
-        """
-        properties = cls()
-        for key, value in element.attributes():
-            if key in ('opacity', 'depth'):
-                value = int(value)
-            elif key in ('rotation','xrotation','yrotation','zrotation'):
-                value = float(value)
-            elif key in ('xalign', 'yalign'):
-                value = value.lower()
-            elif key in ('keep_aspect', 'passive'):
-                value = value.lower() in ('yes', 'true')
-            elif key in ('scale','anchor_point'):
-                value = [ float(x) for x in value.split(',') ]
-                value = int(value[0] * element.get_scale_factor()[0]), \
-                        int(value[1] * element.get_scale_factor()[1])
-            properties[key] = value
-        return properties
