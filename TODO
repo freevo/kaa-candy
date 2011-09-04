@@ -1,0 +1,6 @@
+1. Improve image loading
+
+2. Port clutter-reflect to current clutter API
+
+X. All FIXME, TODO and @todo messages in the code should be fixed. And add
+   more doc (always a good idea)
