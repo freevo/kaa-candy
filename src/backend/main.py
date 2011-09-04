@@ -50,8 +50,8 @@ import kaa
 import kaa.rpc
 
 # hack to provide the kaa.candy core to the widgets
-import kaa.candy2.core
-sys.modules['core'] = kaa.candy2.core
+import kaa.candy.core
+sys.modules['core'] = kaa.candy.core
 
 class Mainloop(object):
     """

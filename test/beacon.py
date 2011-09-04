@@ -4,7 +4,7 @@ import sys
 import os
 
 import kaa
-import kaa.candy2
+import kaa.candy
 import feedparser
 import kaa.beacon
 
@@ -35,7 +35,7 @@ xml = '''
 '''
 
 # create a stage window and parse the xml file
-stage = kaa.candy2.Stage((800,600), 'beacon')
+stage = kaa.candy.Stage((800,600), 'beacon')
 candy = stage.candyxml(xml)[1]
 
 @kaa.coroutine()
@@ -43,7 +43,7 @@ def main():
     query = yield (yield kaa.beacon.get(sys.argv[1])).list()
 
     # this is the context for the images widget
-    context = kaa.candy2.Context(title=os.path.basename(sys.argv[1]), items=query)
+    context = kaa.candy.Context(title=os.path.basename(sys.argv[1]), items=query)
     group = candy.group.thumbnails(context=context)
     stage.add(group)
     grid = group.get_widget('items')

@@ -1,5 +1,5 @@
 import kaa
-import kaa.candy2
+import kaa.candy
 import feedparser
 
 # we use the following xml (file) as gui. There are two main widgets:
@@ -39,7 +39,7 @@ xml = '''
 '''
 
 # create a stage window and parse the xml file
-stage = kaa.candy2.Stage((800,600), 'flickr')
+stage = kaa.candy.Stage((800,600), 'flickr')
 attr, candy = stage.candyxml(xml)
 
 # add the wait widget to the stage. Since it is only a template it is
@@ -107,7 +107,7 @@ def main():
     # create new context and replace it
     feed, items = yield load_feed('sunset')
     # set new context
-    group.context = kaa.candy2.Context(title=feed.feed.title, items=items)
+    group.context = kaa.candy.Context(title=feed.feed.title, items=items)
 
 main()
 

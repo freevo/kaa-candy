@@ -63,7 +63,7 @@ os.environ['PKG_CONFIG_PATH'] = pkgconfig
 # create libcandy extension, gen_libcandy.c may not exist yet
 files = [ 'src/backend/%s.c' % m for m in libcandy_modules ]
 files.extend(['src/backend/gen_libcandy.c', 'src/backend/libcandymodule.c'])
-libcandy = Extension('kaa/candy2/backend/libcandy', files)
+libcandy = Extension('kaa/candy/backend/libcandy', files)
 
 # check dependencies
 if not libcandy.check_library('clutter-1.0', '1.0.4'):
@@ -111,7 +111,7 @@ for m in libcandy_modules:
 
 # now trigger the python magic
 setup(
-    module = 'candy2',
+    module = 'candy',
     version = '0.0.1',
     license = 'LGPL',
     summary = 'Third generation Canvas System using Clutter as backend.',

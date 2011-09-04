@@ -2,7 +2,7 @@ import os
 import gc
 import sys
 import kaa
-import kaa.candy2
+import kaa.candy
 
 xml = '''
 <candyxml geometry="800x600">
@@ -44,7 +44,7 @@ Text
 
 @kaa.coroutine()
 def main():
-    stage = kaa.candy2.Stage((400,300), 'candy')
+    stage = kaa.candy.Stage((400,300), 'candy')
     attr, candy = stage.candyxml(xml)
     container = candy.group.g1()
     stage.add(container)
