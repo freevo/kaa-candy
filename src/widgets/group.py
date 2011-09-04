@@ -236,6 +236,7 @@ class Group(AbstractGroup):
             </group>
         """
         widgets = []
+        parameter = super(Group, cls).candyxml_parse(element).update(widgets=widgets)
         for child in element:
             try:
                 widget = child.xmlcreate()
@@ -246,4 +247,4 @@ class Group(AbstractGroup):
                 log.error('unable to parse %s', child.node)
                 continue
             widgets.append(widget)
-        return super(Group, cls).candyxml_parse(element).update(widgets=widgets)
+        return parameter

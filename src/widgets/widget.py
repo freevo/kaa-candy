@@ -204,10 +204,10 @@ class Widget(object):
         """
         Queue sync
         """
+        self.__intrinsic_size = None
         if self._candy_dirty:
             return True
         self._candy_dirty = True
-        self.__intrinsic_size = None
         parent = self.parent
         if parent and not parent._candy_dirty:
             parent.queue_rendering()
@@ -283,6 +283,12 @@ class Widget(object):
         """
         self.backend.lower_bottom()
 
+    def unparent(self):
+        """
+        Unparent the widget. Calls widget.parent = None
+        """
+        self.parent = None
+
     @property
     def x(self):
         return self.__x
@@ -305,7 +311,7 @@ class Widget(object):
 
     @property
     def width(self):
-        if self.__variable_width and not self.__intrinsic_size:
+        if self.__variable_width and not self.__intrinsic_size and self.parent:
             # start intrinsic size calculations
             self.intrinsic_size
         return self.__width
@@ -328,7 +334,7 @@ class Widget(object):
 
     @property
     def height(self):
-        if self.__variable_height and not self.__intrinsic_size:
+        if self.__variable_height and not self.__intrinsic_size and self.parent:
             # start intrinsic size calculations
             self.intrinsic_size
         return self.__height
@@ -432,7 +438,7 @@ class Widget(object):
         This will return a dictionary with pos, size, and content.
         """
         parameter = XMLdict(pos=element.pos, size=(element.width, element.height))
-        for child in element:
+        for child in element[:]:
             if child.use_as:
                 widget = child.xmlcreate()
                 if not widget:
