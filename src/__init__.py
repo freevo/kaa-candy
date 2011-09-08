@@ -46,3 +46,10 @@ if not sys.argv[0].startswith(os.path.dirname(__file__)):
 
     import candyxml
     import config
+
+    ALIGN_LEFT = Widget.ALIGN_LEFT
+    ALIGN_CENTER = Widget.ALIGN_CENTER
+    ALIGN_RIGHT = Widget.ALIGN_RIGHT
+    ALIGN_TOP = Widget.ALIGN_TOP
+    ALIGN_BOTTOM = Widget.ALIGN_BOTTOM
+    ALIGN_SHRINK = Widget.ALIGN_SHRINK
