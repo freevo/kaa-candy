@@ -72,6 +72,9 @@ class Stage(object):
       - key-press: sends a key pressed in the window. The signal is emited in
            the kaa mainloop.
     """
+
+    wid = None
+
     def __init__(self, size, name):
         self.signals = kaa.Signals('key-press')
         # spawn the backend process
@@ -116,6 +119,22 @@ class Stage(object):
         self.layer.append(layer)
         return len(self.layer) - 1
 
+    def hide(self):
+        """
+        Hide the clutter actors to make it possibile to use the X11
+        window for other applications such as a video player.
+        """
+        for layer in self.layer:
+            self.queue_command(layer._candy_id, 'hide', ())
+        
+    def show(self):
+        """
+        Show the clutter actors again after calling hide.
+        """
+        for layer in self.layer:
+            self.queue_command(layer._candy_id, 'show', ())
+        self.queue_command(-1, 'ensure_redraw', ())
+        
     def add(self, *widgets, **kwargs):
         """
         Add the given widgets to the stage
@@ -213,9 +232,16 @@ class Stage(object):
     @kaa.rpc.expose()
     def event_key_press(self, key):
         """
-        Callback from the backend n key press
+        Callback from the backend on key press
         """
         self.signals['key-press'].emit(key)
+
+    @kaa.rpc.expose()
+    def event_init(self, wid):
+        """
+        Callback from the backend on init
+        """
+        self.wid = wid
 
     def candyxml(self, data):
         """

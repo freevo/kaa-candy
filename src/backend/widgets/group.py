@@ -48,6 +48,18 @@ class Group(widget.Widget):
         self.obj = clutter.Group()
         self.obj.show()
 
+    def hide(self):
+        """
+        Hide the widget
+        """
+        self.obj.hide()
+
+    def show(self):
+        """
+        Show the widget
+        """
+        self.obj.show()
+
     def update(self, modified):
         """
         Render the widget

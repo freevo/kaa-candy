@@ -35,6 +35,7 @@
 # -----------------------------------------------------------------------------
 
 import clutter
+import clutter.x11
 
 class Stage(object):
 
@@ -63,6 +64,9 @@ class Stage(object):
         if key is not None:
             self.server.send_event('key-press', key)
 
+    def ensure_redraw(self):
+        self.obj.ensure_redraw()
+
     def init(self, size):
         """
         Set the size and the base group
@@ -70,3 +74,4 @@ class Stage(object):
         self.obj.set_size(*size)
         self.obj.set_color(clutter.Color(0, 0, 0, 0xff))
         self.obj.show()
+        self.server.send_event('init', clutter.x11.get_stage_window(self.obj))
