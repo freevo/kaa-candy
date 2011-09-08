@@ -161,7 +161,7 @@ class Image(Widget):
         filename or url.
         """
         self.__image_provided = image
-        if image and image.startswith('$'):
+        if image and isinstance(image, (str, unicode)) and image.startswith('$'):
             # variable from the context, e.g. $varname
             image = self.context.get(image) or ''
         if isinstance(image, kaa.imlib2.Image):
