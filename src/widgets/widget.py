@@ -93,7 +93,7 @@ class Widget(object):
     # internal object variables
     _candy_id = None
     _candy_dirty = True
-    _candy_stage = None
+    stage = None
 
     class __metaclass__(type):
         def __new__(meta, name, bases, attrs):
@@ -163,8 +163,8 @@ class Widget(object):
         if not hasattr(self, '_candy_id'):
             return
         Widget._candy_sync_delete.append(self._candy_id)
-        if self._candy_stage and not self._candy_stage._candy_dirty:
-            self._candy_stage.queue_rendering()
+        if self.stage and not self.stage._candy_dirty:
+            self.stage.queue_rendering()
 
     def __sync__(self, tasks):
         """

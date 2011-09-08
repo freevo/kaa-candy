@@ -181,7 +181,7 @@ class Stage(object):
         # create new widgets
         while Widget._candy_sync_new:
             widget = Widget._candy_sync_new.pop(0)
-            widget._candy_stage = self
+            widget.stage = self
             widget.backend.stage = self
             while widget.backend.queue:
                 self.commands.append(widget.backend.queue.pop(0))
