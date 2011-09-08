@@ -50,15 +50,14 @@ import candyxml
 # turn on internal debug
 DEBUG = False
 
-class StageGroup(Group):
+class Layer(Group):
     """
     Group on the stage as parent for widgets added to the stage.
     """
     initialized = False
 
-    def __init__(self, stage, size):
-        super(StageGroup, self).__init__(size=size)
-        self.stage = stage
+    def __init__(self, size):
+        super(Layer, self).__init__(size=size)
 
     @property
     def parent(self):
@@ -96,7 +95,7 @@ class Stage(object):
         self.ipc.register(self)
         self.size = size
         # create the base widget
-        self.layer = [ StageGroup(self, size=size) ]
+        self.layer = [ Layer(size=size) ]
         # We need the render pipe, the 'step' signal is not enough. It
         # is not triggered between timer and select and a change done
         # in a timer may get lost.
@@ -113,7 +112,7 @@ class Stage(object):
         """
         Add a new layer and return its id
         """
-        layer = StageGroup(self, size=self.size)
+        layer = Layer(size=self.size)
         if self.scale:
             layer.scale, (layer.width, layer.height) = self.scale
         self.layer.append(layer)

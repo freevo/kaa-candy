@@ -123,6 +123,7 @@ class Widget(object):
     __variable_height = 100
 
     __parent = None
+    __stage = None
 
     # attributes
     name = None
@@ -163,8 +164,8 @@ class Widget(object):
         if not hasattr(self, '_candy_id'):
             return
         Widget._candy_sync_delete.append(self._candy_id)
-        if self.stage and not self.stage._candy_dirty:
-            self.stage.queue_rendering()
+        if self.__stage and not self.__stage._candy_dirty:
+            self.__stage.queue_rendering()
 
     def __sync__(self, tasks):
         """
@@ -413,6 +414,18 @@ class Widget(object):
                 parent.queue_rendering()
             Widget._candy_sync_reparent.append(self)
             self.queue_rendering()
+
+    @property
+    def stage(self):
+        if not self.__stage and self.__parent:
+            return self.parent.stage
+        return self.__stage
+
+    @stage.setter
+    def stage(self, stage):
+        if self.__stage:
+            raise AttributeError('stage is a read-only variable')
+        self.__stage = stage
 
     @property
     def context(self):
