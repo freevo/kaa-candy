@@ -34,7 +34,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'CairoTexture', 'Imlib2Texture' ]
+__all__ = [ 'CairoTexture', 'ImageTexture' ]
 
 import os
 import kaa.imlib2
@@ -66,22 +66,10 @@ class CairoTexture(widget.Widget):
         self.obj.clear()
 
 
-class Imlib2Texture(widget.Widget):
+class ImageTexture(widget.Widget):
     """
-    Imlib2 based Texture widget.
+    Image widget.
     """
-
-    def prepare(self, modified):
-        """
-        Prepare rendering
-        """
-        if 'data' in modified and self.data[0]:
-            # load the image in the kaa mainloop (it does not have to
-            # be this way, we use shared memory; just to use the
-            # prepare() function once)
-            filename, (width, height) = self.data
-            self.imagedata = open(filename).read()
-            os.unlink(filename)
 
     def create(self):
         """
@@ -94,9 +82,6 @@ class Imlib2Texture(widget.Widget):
         """
         Render the widget
         """
-        super(Imlib2Texture, self).update(modified)
-        if 'data' in modified and self.data[0]:
-            filename, (width, height) = self.data
-            self.obj.set_from_rgb_data(self.imagedata, True, width, height,
-                 width*4, 4, clutter.TEXTURE_RGB_FLAG_BGR)
-            del self.imagedata
+        super(ImageTexture, self).update(modified)
+        if 'filename' in modified and self.filename:
+            self.obj.set_from_file(self.filename)

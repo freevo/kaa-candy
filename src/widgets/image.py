@@ -31,12 +31,13 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Image', 'resolve_image_url' ]
+__all__ = [ 'Image', 'JPG', 'resolve_image_url' ]
 
 # python imports
 import os
 import logging
 import hashlib
+import struct
 import tempfile
 
 # kaa imports
@@ -62,14 +63,15 @@ def resolve_image_url(name):
             return filename
     return None
 
+
 class Image(Widget):
     """
     kaa.imlib2.Imlib2 based image widget
     """
     candyxml_name = 'image'
-    candy_backend = 'candy.Imlib2Texture'
+    candy_backend = 'candy.ImageTexture'
 
-    attributes = [ 'data', 'modified', 'keep_aspect' ]
+    attributes = [ 'filename', 'modified', 'keep_aspect' ]
 
     # image variables
     modified = True
@@ -125,16 +127,16 @@ class Image(Widget):
         """
         if not self.modified:
             return False
-        self.data = None, (0, 0)
+        self.filename = None
         if self.__imagedata:
-            fd, filename = tempfile.mkstemp(prefix='candy', dir='/dev/shm')
+            fd, filename = tempfile.mkstemp(prefix='candy', suffix='.png', dir='/dev/shm')
+            os.close(fd)
             try:
                 # write the image data to shm
-                os.write(fd, str(self.__imagedata.get_raw_data()))
-                self.data = filename, self.__imagedata.size
+                self.__imagedata.save(filename)
+                self.filename = filename
             finally:
                 self.modified = False
-                os.close(fd)
         self.modified = False
         return True
 
@@ -213,3 +215,102 @@ class Image(Widget):
         """
         return super(Image, cls).candyxml_parse(element).update(
             url=element.url or element.filename)
+
+
+class JPG(Widget):
+    """
+    JPG widget for large image files
+    """
+    candyxml_name = 'image'
+    candyxml_style = 'jpg'
+    candy_backend = 'candy.ImageTexture'
+    attributes = [ 'filename', 'keep_aspect' ]
+
+    # image variables
+    keep_aspect = False
+
+    __filename = None
+
+    def __init__(self, pos=None, size=None, filename=None, context=None):
+        """
+        Create the JPG
+
+        @param pos: (x,y) position of the widget or None
+        @param size: (width,height) geometry of the widget
+        @param filename: filename of the image. If the image is not found
+            config.imagepath will be searched for the image. If the filename
+            starts with C{$} the filename will be searched in the context.
+        @param context: the context the widget is created in
+        """
+        super(JPG, self).__init__(pos, size, context)
+        self.filename = filename
+
+    def sync_context(self):
+        """
+        Adjust to a new context
+        """
+        self.filename = self.__filename_provided
+
+    def sync_layout(self, size):
+        """
+        Sync layout changes and calculate intrinsic size based on the
+        parent's size.
+        """
+        if not self.__filename or not os.path.exists(self.__filename):
+            self.intrinsic_size = 0, 0
+            return 0, 0
+        super(JPG, self).sync_layout(size)
+        width, height = self.size
+        if not self.keep_aspect:
+            return
+        iwidth = iheight = 0
+        # try to get the image geometry
+        fd = open(self.filename)
+        if fd.read(2) == '\xff\xd8':
+            app = fd.read(4)
+            while (len(app) == 4):
+                (ff,segtype,seglen) = struct.unpack(">BBH", app)
+                if ff != 0xff or segtype == 0xd9: 
+                    break
+                if segtype >= 0xC0 and segtype <= 0xCF:
+                    iheight, iwidth = struct.unpack('>BHHB', fd.read(seglen-2)[:6])[1:3]
+                    break
+                fd.seek(seglen-2,1)
+                app = fd.read(4)
+        if iwidth and iheight:
+            aspect = float(iwidth) / iheight
+            if int(height * aspect) > width:
+                height = int(width / aspect)
+            else:
+                width = int(height * aspect)
+        self.intrinsic_size = width, height
+
+    @property
+    def filename(self):
+        """
+        Return the filename
+        """
+        if self.__filename and os.path.exists(self.__filename):
+            return self.__filename
+        return None
+
+    @filename.setter
+    def filename(self, filename):
+        """
+        Set a new image based on a filename.
+        """
+        self.__filename_provided = filename
+        if filename and filename.startswith('$'):
+            # variable from the context, e.g. $varname
+            filename = self.context.get(filename) or ''
+        if filename and not filename.startswith('/'):
+            filename = resolve_image_url(filename)
+        self.__filename = filename
+
+    @classmethod
+    def candyxml_parse(cls, element):
+        """
+        Parse the candyxml element for parameter to create the widget. Example::
+          <image style='jpg' x='10' y='10' width='200' height='100' filename='image.jpg'/>
+        """
+        return super(JPG, cls).candyxml_parse(element).update(filename=element.filename)
