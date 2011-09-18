@@ -240,8 +240,9 @@ class Widget(object):
     @kaa.coroutine()
     def animate(self, ease, secs, unparent=False, **kwargs):
         args = [item for sublist in kwargs.items() for item in sublist]
-        self.backend.animate(ease, secs, *args)
-        yield kaa.delay(secs)
+        if secs:
+            self.backend.animate(ease, secs, *args)
+            yield kaa.delay(secs)
         for key, value in kwargs.items():
             setattr(self, key, value)
         if unparent:
