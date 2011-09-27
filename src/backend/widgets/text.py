@@ -62,4 +62,5 @@ class Text(widget.Widget):
         self.obj.set_use_markup(True)
         self.obj.set_font_name("%s %spx" % (self.font.name, self.font.size))
         self.obj.set_color(clutter.Color(*self.color))
+        self.obj.set_ellipsize(pango.ELLIPSIZE_END)
         self.obj.set_text(self.text)
