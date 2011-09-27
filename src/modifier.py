@@ -42,7 +42,6 @@ import kaa
 # get logging object
 log = logging.getLogger('kaa.candy')
 
-
 class Modifier(object):
     """
     Modifier base class for classes that change widgets on creation by
@@ -114,7 +113,7 @@ class Properties(dict, Modifier):
         """
         properties = cls()
         for key, value in element.attributes():
-            if key in ('opacity', 'depth'):
+            if key in ('opacity', 'depth', 'scale_x', 'scale_y'):
                 value = int(value)
             elif key in ('rotation','xrotation','yrotation','zrotation'):
                 value = float(value)
@@ -122,7 +121,7 @@ class Properties(dict, Modifier):
                 value = value.lower()
             elif key in ('keep_aspect',):
                 value = value.lower() in ('yes', 'true')
-            elif key in ('scale','anchor_point'):
+            elif key in ('anchor_point', ):
                 value = [ int(x) for x in value.split(',') ]
             properties[key] = value
         return properties
@@ -136,7 +135,8 @@ class Eventhandler(dict, Modifier):
     #: candyxml name
     candyxml_name = 'event'
     signatures = {
-        'replace': 'prev, next'
+        'replace': 'prev, next',
+        'create': 'widget',
     }
     def modify(self, widget):
         """
@@ -144,7 +144,7 @@ class Eventhandler(dict, Modifier):
 
         @param widget: a kaa.candy.Widget
         """
-        widget.eventhandler.update(self)
+        widget._candy_events.update(self)
         return widget
 
     @classmethod
@@ -157,19 +157,27 @@ class Eventhandler(dict, Modifier):
           </widget>
         """
         obj = cls()
+        for event in ('%s-%s' % (element.parent.node, element.name), element.name):
+            signature = cls.signatures.get(event, None)
+            if signature:
+                break
+        else:
+            raise RuntimeError('unable to parse event %s-%s' % (element.parent.node, element.name))
         if element.content.strip():
-            func = 'def func(%s):\n' % cls.signatures[element.name]
-            if element.content.find('yield') > 0:
+            func = 'def func(%s):\n' % signature
+            if element.content.find('yield') >= 0:
                 func = '@kaa.coroutine()\n' + func
+            if element.content.strip().find('\n') == -1:
+                func += '    '
             func += element.content.rstrip().lstrip('\n') + '\n'
             try:
                 exec(func)
-                obj[element.name] = func
+                obj[event] = func
                 return obj
             except Exception, e:
                 log.exception('unable to parse event')
         scripts = element.candyxml.scripts
-        obj[element.name] = scripts[element.script]
+        obj[event] = scripts[element.script]
         return obj
 
 

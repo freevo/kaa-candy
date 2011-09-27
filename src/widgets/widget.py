@@ -75,6 +75,9 @@ class BackendWrapper(object):
 class Widget(object):
 
     candy_backend = 'candy.Widget'
+    candyxml_name = None
+    candyxml_style = None
+
     attributes = []
     attribute_types = {}
 
@@ -132,14 +135,16 @@ class Widget(object):
     yalign = None
 
     opacity = 255
-    scale = 1, 1
+    scale_x = 1
+    scale_y = 1
     anchor_point = 0, 0
 
+    # if True, the context will not be updated by the parent
+    freeze_context = False
+
     def __init__(self, pos=None, size=None, context=None):
-        self.attributes = self.attributes + ['xalign', 'yalign', 'opacity', 'scale', 'anchor_point']
-        self.eventhandler = {
-            'replace': None
-        }
+        self.attributes = self.attributes + ['xalign', 'yalign', 'opacity', 'scale_x', 'scale_y', 'anchor_point']
+        self._candy_events = {}
         global next_id
         self._candy_id = next_id
         next_id += 1
@@ -167,6 +172,14 @@ class Widget(object):
         if self.__stage and not self.__stage._candy_dirty:
             self.__stage.queue_rendering()
 
+    def emit(self, event, *args):
+        """
+        Emit the given event
+        """
+        if event in self._candy_events:
+            return self._candy_events[event](*args) or True
+        return False
+
     def __sync__(self, tasks):
         """
         Internal function to add the changes to the list of tasks for
@@ -174,6 +187,8 @@ class Widget(object):
         """
         if not self._candy_dirty:
             return False
+        if self._candy_events.get('create'):
+            self._candy_events.pop('create')(self)
         (x, y), (width, height) = self.intrinsic_geometry
         # check the position and set a new position on the backend if
         # needed. This does not result in a new rendering.
@@ -206,11 +221,11 @@ class Widget(object):
         Queue sync
         """
         self.__intrinsic_size = None
-        if self._candy_dirty:
-            return True
+        # if self._candy_dirty:
+        #     return True
         self._candy_dirty = True
         parent = self.parent
-        if parent and not parent._candy_dirty:
+        if parent:# and not parent._candy_dirty:
             parent.queue_rendering()
         return False
 

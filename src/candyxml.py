@@ -60,7 +60,7 @@ class Element(object):
         self.content = ''
         self.node = node
         # note: circular reference
-        self._parent = parent
+        self.parent = parent
         self._attrs = {}
         for key, value in attrs.items():
             if key in ('x', 'xpadding', 'y', 'ypadding'):
@@ -85,9 +85,9 @@ class Element(object):
 
     @property
     def candyxml(self):
-        root = self._parent
-        while getattr(root, '_parent', None) is not None:
-            root = root._parent
+        root = self.parent
+        while getattr(root, 'parent', None) is not None:
+            root = root.parent
         return root
 
     def __iter__(self):
@@ -275,6 +275,13 @@ class Styles(dict):
     """
     Style dict for candyxml_parse and candyxml_create callbacks
     """
+    class __metaclass__(type):
+        def __new__(meta, name, bases, attrs):
+            cls = type.__new__(meta, name, bases, attrs)
+            if 'candyxml_name' in attrs.keys():
+                register(cls())
+            return cls
+
     def candyxml_parse(self, element):
         return self.get(element.style)
 

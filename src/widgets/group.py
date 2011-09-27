@@ -31,7 +31,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'AbstractGroup', 'Group' ]
+__all__ = [ 'AbstractGroup', 'Group', 'ConditionGroup' ]
 
 # python imports
 import logging
@@ -60,7 +60,6 @@ class AbstractGroup(Widget):
     def __init__(self, pos=None, size=None, context=None):
         super(AbstractGroup, self).__init__(pos, size, context)
         self.children = []
-        self.__replacing = []
 
     def __sync__(self, tasks):
         """
@@ -97,7 +96,7 @@ class AbstractGroup(Widget):
         """
         context = self.context
         for child in self.children[:]:
-            if child in self.__replacing:
+            if child.freeze_context:
                 continue
             if not child.supports_context(context):
                 # FIXME: put new child at the same position in the
@@ -190,16 +189,15 @@ class AbstractGroup(Widget):
     @kaa.coroutine()
     def replace(self, child, replacement):
         """
-        Replace the given child with the replacement. Call the child's
-        replace eventhandler if available for an animation.
+        Replace the given child with the replacement. Emit the child's
+        replace event.
         """
         replacement.parent = self
-        self.__replacing.append(child)
-        if child.eventhandler.get('replace'):
-            replacing = child.eventhandler.get('replace')(child, replacement)
-            if isinstance(replacing, kaa.InProgress):
-                yield replacing
-        self.__replacing.remove(child)
+        child.freeze_context = True
+        replacing = child.emit('replace', child, replacement)
+        if isinstance(replacing, kaa.InProgress):
+            yield replacing
+        child.freeze_context = False
         child.parent = None
 
     def clear(self):
@@ -220,7 +218,6 @@ class Group(AbstractGroup):
 
     def __init__(self, pos=None, size=None, widgets=[], context=None):
         super(Group, self).__init__(pos, size, context)
-        self.children = []
         for widget in widgets:
             if is_template(widget):
                 widget = widget(context)
@@ -247,4 +244,69 @@ class Group(AbstractGroup):
                 log.error('unable to parse %s', child.node)
                 continue
             widgets.append(widget)
+        return parameter
+
+
+class ConditionGroup(AbstractGroup):
+    """
+    Group widget switch/case with XML support
+    """
+
+    candyxml_name = 'group'
+    candyxml_style = 'condition'
+
+    def __init__(self, pos=None, size=None, conditions=[], context=None):
+        super(ConditionGroup, self).__init__(pos, size, context)
+        for pos, (condition, value, widgets) in enumerate(conditions):
+            if isinstance(condition, (str, unicode)):
+                condition = self.context.get(condition)
+            if value:
+                condition = not cmp(str(condition).lower(), str(value).lower())
+            if condition:
+                for widget in widgets:
+                    if is_template(widget):
+                        widget = widget(context)
+                    self.add(widget)
+                break
+        else:
+            pos = -1
+        self.__condition = pos, conditions
+
+    def supports_context(self, context):
+        """
+        Check if the widget is capable of the given context based on its
+        dependencies.
+        """
+        if not super(ConditionGroup, self).supports_context(context):
+            return False
+        old, conditions = self.__condition
+        for pos, (condition, value, widgets) in enumerate(conditions):
+            if isinstance(condition, (str, unicode)):
+                condition = context.get(condition)
+            if value:
+                condition = not cmp(str(condition).lower(), str(value).lower())
+            if condition:
+                return pos == old
+        return False
+
+    @classmethod
+    def candyxml_parse(cls, element):
+        """
+        Parse the candyxml element for parameter to create the widget.
+        """
+        conditions = []
+        parameter = super(ConditionGroup, cls).candyxml_parse(element).update(conditions=conditions)
+        for c in element:
+            widgets = []
+            for child in c:
+                try:
+                    widget = child.xmlcreate()
+                except Exception, e:
+                    log.error('unable to parse %s: %s', child.node, e)
+                    continue
+                if not widget:
+                    log.error('unable to parse %s', child.node)
+                    continue
+                widgets.append(widget)
+            conditions.append((c.condition or True, c.value, widgets))
         return parameter

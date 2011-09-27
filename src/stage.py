@@ -114,7 +114,7 @@ class Stage(object):
         """
         layer = Layer(size=self.size)
         if self.scale:
-            layer.scale, (layer.width, layer.height) = self.scale
+            (layer.scale_x, layer.scale_y), (layer.width, layer.height) = self.scale
         self.layer.append(layer)
         return len(self.layer) - 1
 
@@ -146,6 +146,19 @@ class Stage(object):
         """
         self.layer[kwargs.get('layer', 0)].remove(*widgets)
 
+    def get_widget(self, name):
+        """
+        Get child element with the given name. For group children this
+        function will search recursive.
+
+        @param name: name of the child
+        @returns: widget or None
+        """
+        for layer in self.layer:
+            widget = layer.get_widget(name)
+            if widget:
+                return widget
+
     def queue_rendering(self):
         """
         Queue sync for rendering
@@ -159,9 +172,7 @@ class Stage(object):
         Queue sync for a command
         """
         self.commands.append((candy_id, cmd, args))
-        if not self._candy_dirty:
-            self._candy_dirty = True
-            os.write(self._render_pipe[1], '1')
+        self.queue_rendering()
 
     def __sync(self):
         """
@@ -223,10 +234,10 @@ class Stage(object):
         """
         if isinstance(size, (str, unicode)):
             size = int(size.split('x')[0]), int(size.split('x')[1])
-        self._candy_dirty = True
+        self.queue_rendering()
         self.scale = (float(self.size[0]) / size[0], float(self.size[1]) / size[1]), size
         for layer in self.layer:
-            layer.scale, (layer.width, layer.height) = self.scale
+            (layer.scale_x, layer.scale_y), (layer.width, layer.height) = self.scale
 
     @kaa.rpc.expose()
     def event_key_press(self, key):

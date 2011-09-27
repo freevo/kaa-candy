@@ -113,11 +113,11 @@ class Widget(object):
             self.obj.set_height(self.height)
         if 'opacity' in modified:
             self.obj.set_opacity(self.opacity)
-        if 'scale' in modified:
-            self.obj.set_scale(*self.scale)
+        if 'scale_x' in modified or 'scale_y' in modified:
+            self.obj.set_scale(self.scale_x, self.scale_y)
         if 'anchor_point' in modified:
             self.obj.set_anchor_point(*self.anchor_point)
-
+            
     def animate(self, ease, secs, *args):
         # Note: it is not possible to stop or modify an animation
         # right now. The result from this call has to go back to the
