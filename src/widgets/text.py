@@ -56,6 +56,9 @@ class Text(Widget):
     __intrinsic_size_param = None
     __intrinsic_size_cache = None
 
+    __text_regexp = re.compile('\$([a-zA-Z][a-zA-Z0-9_\.]*)|\${([^}]*)}')
+    __text = None
+
     def __init__(self, pos, size, text, font, color, align=None, context=None):
         """
         Create Text widget. Unlike a Label a Text widget supports multi-line
@@ -73,6 +76,33 @@ class Text(Widget):
         self.font = font
         self.text = text
         self.color = color
+
+    @property
+    def text(self):
+        return self.__text
+
+    @text.setter
+    def text(self, text):
+        self.__text_provided = text
+        def replace_context(matchobj):
+            match = matchobj.groups()[0] or matchobj.groups()[1]
+            s = self.context.get(match, '')
+            if s is not None:
+                return unicode(s)
+            return ''
+        if self.context:
+            # we have a context, use it
+            text = re.sub(self.__text_regexp, replace_context, text)
+        if self.__text == text:
+            return
+        self.__text = text
+        self.queue_rendering()
+
+    def sync_context(self):
+        """
+        Adjust to a new context
+        """
+        self.text = self.__text_provided
 
     def sync_layout(self, size):
         """
@@ -92,8 +122,9 @@ class Text(Widget):
         obj.set_use_markup(True)
         obj.set_font_name("%s %spx" % (self.font.name, self.font.size))
         obj.set_text(self.text)
-        self.__intrinsic_size_cache = pango.units_to_double(obj.get_layout().get_size()[0]), \
-            pango.units_to_double(obj.get_layout().get_size()[1])
+        self.__intrinsic_size_cache = \
+            min(width, pango.units_to_double(obj.get_layout().get_size()[0])), \
+            min(height, pango.units_to_double(obj.get_layout().get_size()[1]))
         self.__intrinsic_size_param = (width, height, self.text, self.font.name, self.font.size)
         self.intrinsic_size = self.__intrinsic_size_cache
         return self.__intrinsic_size_cache
