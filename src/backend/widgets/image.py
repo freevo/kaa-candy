@@ -83,5 +83,8 @@ class ImageTexture(widget.Widget):
         Render the widget
         """
         super(ImageTexture, self).update(modified)
-        if 'filename' in modified and self.filename:
-            self.obj.set_from_file(self.filename)
+        if 'sync_data' in modified and self.sync_data:
+            filename, delete = self.sync_data
+            self.obj.set_from_file(filename)
+            if delete:
+                os.unlink(filename)
