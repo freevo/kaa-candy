@@ -299,7 +299,7 @@ def register(cls):
             parser[name] = Styles()
         parser, name = parser[name], getattr(cls, 'candyxml_style', None)
     if name in parser:
-        raise RuntimeError('%s already registered' % name)
+        log.info('%s already registered' % name)
     parser[name] = cls
 
 def get_class(name, style):
