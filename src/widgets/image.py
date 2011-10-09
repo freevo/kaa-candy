@@ -151,6 +151,13 @@ class Image(Widget):
         self.modified = False
         return True
 
+    def get_cachefile(self, url):
+        """
+        Return the cache filename for the given url
+        """
+        base = hashlib.md5(url).hexdigest() + os.path.splitext(url)[1]
+        return kaa.tempfile('candy-images/' + base)
+        
     def on_download_complete(self, status, cachefile):
         """
         Callback for HTTP GET result. The image should be in the
@@ -185,8 +192,7 @@ class Image(Widget):
         if image and image.startswith('http://'):
             # remote image, create local cachefile
             # FIXME: how to handle updates on the remote side?
-            base = hashlib.md5(image).hexdigest() + os.path.splitext(image)[1]
-            cachefile = kaa.tempfile('candy-images/' + base)
+            cachefile = self.get_cachefile(image)
             if not os.path.isfile(cachefile):
                 # Download the image
                 # FIXME: errors will be dropped
@@ -195,7 +201,7 @@ class Image(Widget):
                 #  or at least a max number of threads to make the individual
                 #  image loading faster
                 if not cachefile in self.__current_downloads:
-                    tmpfile = kaa.tempfile('candy-images/.' + base)
+                    tmpfile = cachefile + '.tmp'
                     c = kaa.net.url.fetch(image, cachefile, tmpfile)
                     self.__current_downloads[cachefile] = c
                 self.__current_downloads[cachefile].connect_weak_once(self.on_download_complete, cachefile)
