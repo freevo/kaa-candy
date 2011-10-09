@@ -418,8 +418,8 @@ class Widget(object):
     def parent(self, parent):
         if not self in Widget._candy_sync_reparent:
             self.queue_rendering()
-            if self.__parent:
-                self.__parent.children.remove(self)
+        if self.__parent:
+            self.__parent.children.remove(self)
         if parent:
             self.__parent = kaa.weakref.weakref(parent)
             self.__parent.children.append(self)
