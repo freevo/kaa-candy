@@ -194,9 +194,12 @@ class AbstractGroup(Widget):
         """
         replacement.parent = self
         child.freeze_context = True
-        replacing = child.emit('replace', child, replacement)
-        if isinstance(replacing, kaa.InProgress):
-            yield replacing
+        try:
+            replacing = child.emit('replace', child, replacement)
+            if isinstance(replacing, kaa.InProgress):
+                yield replacing
+        except Exception, e:
+            log.exception('replacing error')
         child.freeze_context = False
         child.parent = None
 
