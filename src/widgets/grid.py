@@ -202,7 +202,10 @@ class Grid(AbstractGroup):
             items = self.context.get(items)
         if self.__items != items:
             if self.__items:
-                # we already had a valid list of items.
+                # we already had a valid list of items. Set the new
+                # list of items before clearing in case an inherting
+                # class already needs it on clear
+                self.__items = items
                 self.clear()
             self.__items = items
 
