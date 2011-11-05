@@ -258,6 +258,8 @@ class Widget(object):
         if secs:
             self.backend.animate(ease, secs, *args)
             yield kaa.delay(secs)
+            for key, value in kwargs.items():
+                self.__sync_cache[key] = value
         for key, value in kwargs.items():
             setattr(self, key, value)
         if unparent:
