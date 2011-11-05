@@ -41,8 +41,8 @@ import sys
 import os
 import time
 import threading
-import traceback
 import imp
+import logging
 import gobject
 
 # kaa imports
@@ -52,6 +52,9 @@ import kaa.rpc
 # hack to provide the kaa.candy core to the widgets
 import kaa.candy.core
 sys.modules['core'] = kaa.candy.core
+
+# get logging object
+log = logging.getLogger('candy')
 
 class Mainloop(object):
     """
@@ -97,7 +100,7 @@ class Mainloop(object):
             try:
                 func(*args)
             except Exception, e:
-                traceback.print_exc()
+                log.exception('sync error: %s%s', func, args)
         sync_time = time.time() - t0
         if sync_time > 0.01:
             # only print out the sync time if we cannot make
@@ -154,9 +157,9 @@ class Server(object):
                     if delayed:
                         queue.append(delayed)
                 except Exception, e:
-                    traceback.print_exc()
+                    log.exception('sync error: %s%s', func, args)
             else:
-                print 'unsupported command: %s' % cmd
+                log.error('unsupported command: %s', cmd)
         if queue:
             # sync with the clutter thread
             event = threading.Event()
