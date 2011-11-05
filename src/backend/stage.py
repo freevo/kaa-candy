@@ -35,7 +35,6 @@
 # -----------------------------------------------------------------------------
 
 import clutter
-import clutter.x11
 
 class Stage(object):
 
@@ -74,4 +73,3 @@ class Stage(object):
         self.obj.set_size(*size)
         self.obj.set_color(clutter.Color(0, 0, 0, 0xff))
         self.obj.show()
-        self.server.send_event('init', clutter.x11.get_stage_window(self.obj))

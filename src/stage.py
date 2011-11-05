@@ -72,8 +72,6 @@ class Stage(object):
            the kaa mainloop.
     """
 
-    wid = None
-
     def __init__(self, size, name):
         self.signals = kaa.Signals('key-press')
         # spawn the backend process
@@ -245,13 +243,6 @@ class Stage(object):
         Callback from the backend on key press
         """
         self.signals['key-press'].emit(key)
-
-    @kaa.rpc.expose()
-    def event_init(self, wid):
-        """
-        Callback from the backend on init
-        """
-        self.wid = wid
 
     def candyxml(self, data):
         """
