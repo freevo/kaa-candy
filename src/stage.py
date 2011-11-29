@@ -76,6 +76,8 @@ class Stage(object):
         self.signals = kaa.Signals('key-press')
         # spawn the backend process
         name = 'candy-backend-%s' % name
+        ### Change /backend/ to /backend_gi/ to switch to the new gi
+        ### based backend which is not considerted stable right now.
         args = [ 'python', os.path.dirname(__file__) + '/backend/main.py', name ]
         self._candy_dirty = True
         self.server = subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr)
