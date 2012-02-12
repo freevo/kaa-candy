@@ -43,6 +43,7 @@ class Stage(object):
         Create the clutter stage object
         """
         self.obj = clutter.Stage.get_default()
+        self.obj.hide_cursor()
         self.obj.connect('key-press-event', self.handle_key)
         self.keysyms = {}
         for name in dir(clutter):

@@ -44,6 +44,7 @@ class Stage(object):
         """
         self.obj = clutter.Stage()
         self.obj.connect('key-press-event', self.handle_key)
+        self.obj.hide_cursor()
         self.keysyms = {}
         # get list of clutter key code. We must access the module
         # first before it is working, therefor we access Left.
@@ -53,15 +54,14 @@ class Stage(object):
                 self.keysyms[getattr(clutter.keysyms, name)] = name[1]
             if not name.startswith('_'):
                 self.keysyms[getattr(clutter.keysyms, name)] = name
-
+    
     def handle_key(self, stage, event):
         """
         Translate clutter keycode to name and emit signal in main loop. This
         function is a callback from clutter.
         """
-        key = self.keysyms.get(event.keyval)
-        if key is not None:
-            self.server.send_event('key-press', key)
+        key = self.keysyms.get(event.keyval) or event.keyval
+        self.server.send_event('key-press', key)
 
     def ensure_redraw(self):
         self.obj.ensure_redraw()
