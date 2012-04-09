@@ -35,11 +35,14 @@ __all__ = [ 'Text' ]
 
 import re
 
-# we need to import clutter here to calculate the size. Clutter itself
-# is never initialized and its main loop is not started. If someone
-# knows a better way to get the intrinsic size, please change this.
-import pango
-import clutter
+# we need to import clutter here to calculate the size. The Clutter
+# mainloop is not started. If someone knows a better way to get the
+# intrinsic size, please change this. Trying to use pango together
+# with cairo showed different intrinsic size values.
+from gi.repository import Clutter as clutter
+from gi.repository import Pango as pango
+clutter.threads_init()
+clutter.init([])
 
 from widget import Widget
 from ..core import Color, Font
@@ -114,11 +117,10 @@ class Text(Widget):
         if self.__intrinsic_size_param == (width, height, self.text, self.font.name, self.font.size):
             self.intrinsic_size = self.__intrinsic_size_cache
             return self.__intrinsic_size_cache
-        # ugly hack: we need clutter to help us get the size we need
         obj = clutter.Text()
         obj.set_size(width, height)
         obj.set_line_wrap(True)
-        obj.set_line_wrap_mode(pango.WRAP_WORD_CHAR)
+        obj.set_line_wrap_mode(pango.WrapMode.WORD_CHAR)
         obj.set_use_markup(True)
         obj.set_font_name("%s %spx" % (self.font.name, self.font.size))
         obj.set_text(self.text)

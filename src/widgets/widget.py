@@ -286,7 +286,8 @@ class Widget(object):
             for var, value in self.__depends.items():
                 if value != repr(context.get(var)):
                     return False
-        except AttributeError:
+        except AttributeError, e:
+            log.error('supports_context: %s', e)
             return False
         return True
 

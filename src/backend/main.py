@@ -43,7 +43,19 @@ import time
 import threading
 import imp
 import logging
-import gobject
+
+# get logging object
+log = logging.getLogger('candy')
+
+# set stdout logging
+formatter = logging.Formatter('%(levelname)s %(module)s(%(lineno)s): %(message)s')
+handler = logging.StreamHandler()
+handler.setFormatter(formatter)
+log.addHandler(handler)
+
+# import GObject from gi.repository before jumping into kaa to force
+# kaa.gobject to use the gi repository
+from gi.repository import GObject as gobject
 
 # kaa imports
 import kaa
@@ -52,9 +64,6 @@ import kaa.rpc
 # hack to provide the kaa.candy core to the widgets
 import kaa.candy.core
 sys.modules['core'] = kaa.candy.core
-
-# get logging object
-log = logging.getLogger('candy')
 
 class Mainloop(object):
     """
@@ -65,9 +74,9 @@ class Mainloop(object):
         # Import clutter only in the gobject thread
         # This function will be the running mainloop
         try:
-            import clutter
+            from gi.repository import Clutter as clutter
             clutter.threads_init()
-            clutter.init()
+            clutter.init([])
             clutter.main()
         except Exception, e:
             log.exception('unable to import clutter')
@@ -75,7 +84,7 @@ class Mainloop(object):
 
     def quit(self):
         # Import clutter only in the gobject thread
-        import clutter
+        from gi.repository import Clutter as clutter
         clutter.main_quit()
 
     def imp(self, name, path):

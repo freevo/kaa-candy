@@ -36,8 +36,8 @@
 
 __all__ = [ 'Text' ]
 
-import clutter
-import pango
+from gi.repository import Clutter as clutter
+from gi.repository import Pango as pango
 
 import widget
 
@@ -47,7 +47,7 @@ class Text(widget.Widget):
         """
         Create the clutter object
         """
-        self.obj = clutter.Text()
+        self.obj = clutter.Text.new()
         self.obj.show()
 
     def update(self, modified):
@@ -56,11 +56,11 @@ class Text(widget.Widget):
         """
         super(Text, self).update(modified)
         if 'align' in modified and self.align:
-            self.obj.set_line_alignment(str(self.align))
+            self.obj.set_line_alignment(getattr(pango.Alignment, str(self.align).upper()))
         self.obj.set_line_wrap(True)
-        self.obj.set_line_wrap_mode(pango.WRAP_WORD_CHAR)
+        self.obj.set_line_wrap_mode(pango.WrapMode.WORD_CHAR)
         self.obj.set_use_markup(True)
         self.obj.set_font_name("%s %spx" % (self.font.name, self.font.size))
-        self.obj.set_color(clutter.Color(*self.color))
-        self.obj.set_ellipsize(pango.ELLIPSIZE_END)
+        self.obj.set_color(clutter.Color.new(*self.color))
+        self.obj.set_ellipsize(pango.EllipsizeMode.END)
         self.obj.set_text(self.text)

@@ -39,7 +39,9 @@ __all__ = [ 'CairoTexture', 'ImageTexture' ]
 import os
 import kaa.imlib2
 
-import clutter
+import cairo
+from gi.repository import Clutter as clutter
+
 import widget
 
 class CairoTexture(widget.Widget):
@@ -53,8 +55,20 @@ class CairoTexture(widget.Widget):
         """
         Create the clutter object
         """
-        self.obj = clutter.CairoTexture(self.width, self.height)
+        if not self.width or not self.height:
+            self.width = self.height = 1
+        self.obj = clutter.CairoTexture(
+            width=self.width, height=self.height,
+            surface_width=self.width, surface_height=self.height,
+            auto_resize=True)
+        self.obj.connect_after('draw', self.draw)
         self.obj.show()
+
+    def draw(self, texture, cr):
+        cr.set_operator (cairo.OPERATOR_CLEAR)
+        cr.paint()
+        cr.set_operator(cairo.OPERATOR_OVER)
+        return True
 
     def update(self, modified):
         """
@@ -63,8 +77,11 @@ class CairoTexture(widget.Widget):
         super(CairoTexture, self).update(modified)
         if ('width' in modified or 'height' in modified) and self.height and self.width:
             self.obj.set_surface_size(self.width, self.height)
-        self.obj.clear()
-
+        for attribute in 'opacity', 'scale_x', 'scale_y', 'anchor_point':
+            if attribute in modified:
+                modified.pop(attribute)
+        if modified:
+            self.obj.invalidate()
 
 class ImageTexture(widget.Widget):
     """
@@ -75,7 +92,7 @@ class ImageTexture(widget.Widget):
         """
         Create the clutter object
         """
-        self.obj = clutter.Texture()
+        self.obj = clutter.Texture.new()
         self.obj.show()
 
     def update(self, modified):

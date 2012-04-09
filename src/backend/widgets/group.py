@@ -36,7 +36,8 @@
 
 __all__ = [ 'Group' ]
 
-import clutter
+from gi.repository import Clutter as clutter
+
 import widget
 
 class Group(widget.Widget):
@@ -45,7 +46,7 @@ class Group(widget.Widget):
         """
         Create the clutter object
         """
-        self.obj = clutter.Group()
+        self.obj = clutter.Group.new()
         self.obj.show()
 
     def hide(self):

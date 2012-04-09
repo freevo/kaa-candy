@@ -36,17 +36,17 @@
 
 __all__ = [ 'Rectangle' ]
 
-import clutter
+from gi.repository import Clutter as clutter
+
 import image
 
 class Rectangle(image.CairoTexture):
 
-    def update(self, modified):
+    def draw(self, texture, cr):
         """
         Render the widget
         """
-        super(Rectangle, self).update(modified)
-        context = self.obj.cairo_create()
+        super(Rectangle, self).draw(texture, cr)
         stroke = self.border_size or 1
         width = self.width - 2 * stroke
         height = self.height - 2 * stroke
@@ -56,29 +56,29 @@ class Rectangle(image.CairoTexture):
         x1 = int(x0 + width)
         y1 = int(y0 + height)
         if self.color:
-            context.set_source_rgba(*self.color.to_cairo())
-            context.set_line_width(stroke)
-            context.move_to  (x0, y0 + radius)
-            context.curve_to (x0, y0, x0 , y0, x0 + radius, y0)
-            context.line_to (x1 - radius, y0)
-            context.curve_to (x1, y0, x1, y0, x1, y0 + radius)
-            context.line_to (x1 , y1 - radius)
-            context.curve_to (x1, y1, x1, y1, x1 - radius, y1)
-            context.line_to (x0 + radius, y1)
-            context.curve_to (x0, y1, x0, y1, x0, y1- radius)
-            context.close_path()
-            context.fill()
+            cr.set_source_rgba(*self.color.to_cairo())
+            cr.set_line_width(stroke)
+            cr.move_to  (x0, y0 + radius)
+            cr.curve_to (x0, y0, x0 , y0, x0 + radius, y0)
+            cr.line_to (x1 - radius, y0)
+            cr.curve_to (x1, y0, x1, y0, x1, y0 + radius)
+            cr.line_to (x1 , y1 - radius)
+            cr.curve_to (x1, y1, x1, y1, x1 - radius, y1)
+            cr.line_to (x0 + radius, y1)
+            cr.curve_to (x0, y1, x0, y1, x0, y1- radius)
+            cr.close_path()
+            cr.fill()
         if self.border_size and self.border_color:
-            context.set_source_rgba(*self.border_color.to_cairo())
-            context.set_line_width(stroke)
-            context.move_to  (x0, y0 + radius)
-            context.curve_to (x0 , y0, x0 , y0, x0 + radius, y0)
-            context.line_to (x1 - radius, y0)
-            context.curve_to (x1, y0, x1, y0, x1, y0 + radius)
-            context.line_to (x1 , y1 - radius)
-            context.curve_to (x1, y1, x1, y1, x1 - radius, y1)
-            context.line_to (x0 + radius, y1)
-            context.curve_to (x0, y1, x0, y1, x0, y1- radius)
-            context.close_path()
-            context.stroke()
-        del context
+            cr.set_source_rgba(*self.border_color.to_cairo())
+            cr.set_line_width(stroke)
+            cr.move_to  (x0, y0 + radius)
+            cr.curve_to (x0 , y0, x0 , y0, x0 + radius, y0)
+            cr.line_to (x1 - radius, y0)
+            cr.curve_to (x1, y0, x1, y0, x1, y0 + radius)
+            cr.line_to (x1 , y1 - radius)
+            cr.curve_to (x1, y1, x1, y1, x1 - radius, y1)
+            cr.line_to (x0 + radius, y1)
+            cr.curve_to (x0, y1, x0, y1, x0, y1- radius)
+            cr.close_path()
+            cr.stroke()
+        return True

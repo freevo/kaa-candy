@@ -36,27 +36,26 @@
 
 __all__ = [ 'Label' ]
 
-import cairo
 import image
 
-import clutter
+import cairo
+from gi.repository import Clutter as clutter
+
 import core
 
 class Label(image.CairoTexture):
-
-    def update(self, modified):
+    
+    def draw(self, texture, cr):
         """
         Render the widget
         """
-        super(Label, self).update(modified)
+        super(Label, self).draw(texture, cr)
         fade = self.font.get_width(self.text) > self.width
         # draw new text string
-        context = self.obj.cairo_create()
-        context.set_operator(cairo.OPERATOR_SOURCE)
         if self.color:
-            context.set_source_rgba(*self.color.to_cairo())
-        context.select_font_face(self.font.name, cairo.FONT_SLANT_NORMAL)
-        context.set_font_size(self.font.size)
+            cr.set_source_rgba(*self.color.to_cairo())
+        cr.select_font_face(self.font.name, cairo.FONT_SLANT_NORMAL)
+        cr.set_font_size(self.font.size)
         if fade and self.color:
             s = cairo.LinearGradient(0, 0, self.width, 0)
             c = self.color.to_cairo()
@@ -64,6 +63,7 @@ class Label(image.CairoTexture):
             # 50 pixel fading
             s.add_color_stop_rgba(1 - (50.0 / self.width), *c)
             s.add_color_stop_rgba(1, c[0], c[1], c[2], 0)
-            context.set_source(s)
-        context.move_to(0, context.font_extents()[0])
-        context.show_text(self.text)
+            cr.set_source(s)
+        cr.move_to(0, cr.font_extents()[0])
+        cr.show_text(self.text)
+        return True

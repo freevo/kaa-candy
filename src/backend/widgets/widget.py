@@ -36,7 +36,7 @@
 
 __all__ = [ 'Widget' ]
 
-import clutter
+from gi.repository import Clutter as clutter
 
 class Widget(object):
 
@@ -70,7 +70,7 @@ class Widget(object):
         Executed in the clutter thread
         """
         if self.obj and self.obj.get_parent():
-            self.obj.get_parent().remove(self.obj)
+            self.obj.get_parent().remove_actor(self.obj)
         self.obj = None
 
     def reparent(self, parent):
@@ -79,9 +79,9 @@ class Widget(object):
         Executed in the clutter thread
         """
         if self.obj.get_parent():
-            self.obj.get_parent().remove(self.obj)
+            self.obj.get_parent().remove_actor(self.obj)
         if parent:
-            parent.obj.add(self.obj)
+            parent.obj.add_actor(self.obj)
 
     def set_position(self):
         """
@@ -117,9 +117,15 @@ class Widget(object):
             self.obj.set_scale(self.scale_x, self.scale_y)
         if 'anchor_point' in modified:
             self.obj.set_anchor_point(*self.anchor_point)
-            
+
     def animate(self, ease, secs, *args):
         # Note: it is not possible to stop or modify an animation
         # right now. The result from this call has to go back to the
         # main app somehow.
-        self.obj.animate(getattr(clutter, ease), int(secs * 1000) or 1, *args)
+        keys = []
+        values = []
+        args = list(args)
+        while args:
+            keys.append(args.pop(0))
+            values.append(args.pop(0))
+        self.obj.animatev(getattr(clutter.AnimationMode, ease), int(secs * 1000) or 1, keys, values)
