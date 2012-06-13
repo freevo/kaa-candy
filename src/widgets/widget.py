@@ -163,7 +163,9 @@ class Widget(object):
             self.queue_rendering()
 
     def __del__(self):
-        if not hasattr(self, '_candy_id'):
+        if not hasattr(self, '_candy_id') or not Widget:
+            # Python is shutting down, no need to clean anymore -- and
+            # not possible.
             return
         Widget._candy_sync_delete.append(self._candy_id)
         if self.__stage and not self.__stage._candy_dirty:
