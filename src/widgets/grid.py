@@ -180,7 +180,9 @@ class Grid(AbstractGroup):
 
     def sync_context(self):
         """
-        Adjust to a new context
+        Adjust to a new context. Note: the context of the children is
+        not synced. If required the grid must be cleared first. This
+        may be fixed in future versions of this widget.
         """
         self.items = self.__items_provided
 
