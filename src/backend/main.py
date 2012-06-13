@@ -110,9 +110,10 @@ class Mainloop(object):
                 log.exception('sync error: %s%s', func, args)
         sync_time = time.time() - t0
         if sync_time > 0.01:
-            # only print out the sync time if we cannot make
-            # 100fps. Below is always high enough
-            print 'sync took %0.4f sec' % sync_time
+            # We should use the logging module somehow and get the
+            # logging info to the main process. Only print out the
+            # sync time if we cannot make 100fps.
+            print 'kaa.candy warning: sync took %0.4f sec' % sync_time
         event.set()
         return False
 
