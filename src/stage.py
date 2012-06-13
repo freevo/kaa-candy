@@ -244,6 +244,16 @@ class Stage(object):
         """
         self.signals['key-press'].emit(key)
 
+    @kaa.rpc.expose()
+    def event_widget_call(self, wid, func, *args, **kwargs):
+        """
+        Callback for a widget
+        """
+        for layer in self.layer:
+            widget = layer.get_widget_by_id(wid)
+            if widget:
+                getattr(widget, 'event_%s' % func)(*args, **kwargs)
+
     def candyxml(self, data):
         """
         Load a candyxml file based on the given screen resolution.

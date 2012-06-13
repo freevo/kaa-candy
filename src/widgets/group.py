@@ -172,6 +172,23 @@ class AbstractGroup(Widget):
                     return result
         return None
 
+    def get_widget_by_id(self, wid):
+        """
+        Get child element with the given id. For group children this
+        function will search recursive.
+
+        @param wid: id of the child
+        @returns: widget or None
+        """
+        for child in self.children:
+            if child._candy_id == wid:
+                return child
+            if isinstance(child, AbstractGroup):
+                result = child.get_widget_by_id(wid)
+                if result is not None:
+                    return result
+        return None
+
     def add(self, *widgets):
         """
         Add widgets to the group.

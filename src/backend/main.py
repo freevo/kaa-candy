@@ -190,6 +190,7 @@ class Server(object):
         """
         self.widgets[wid] = eval(cls)()
         self.widgets[wid].server = self
+        self.widgets[wid].wid = wid
         return self.widgets[wid].create, ()
 
     def cmd_call(self, wid, cmd, args):

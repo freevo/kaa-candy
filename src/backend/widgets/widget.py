@@ -43,6 +43,9 @@ class Widget(object):
     # clutter object
     obj = None
 
+    # internal id of the widget on client and server
+    wid = None
+
     ALIGN_LEFT = 'left'
     ALIGN_RIGHT = 'right'
     ALIGN_TOP = 'top'
