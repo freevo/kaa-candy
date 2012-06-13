@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # modifier.py - Modifier for the XML Parser and Templates
 # -----------------------------------------------------------------------------
-# $Id:$
-#
-# -----------------------------------------------------------------------------
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
 # Copyright (C) 2011 Dirk Meyer
 #

@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # candyxml.py - Parser to parse XML into widget Templates
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
 # Copyright (C) 2011 Dirk Meyer
 #

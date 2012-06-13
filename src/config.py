@@ -2,8 +2,6 @@
 # -----------------------------------------------------------------------------
 # config.py - Configuration options for kaa.candy
 # -----------------------------------------------------------------------------
-# $Id$
-#
 # The config is not based on kaa.config on purpose. If some variables
 # need a kaa.config part for the application define it in the application.
 #

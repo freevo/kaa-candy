@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # setup.py - Setup script for kaa.candy
 # -----------------------------------------------------------------------------
-# $Id$
-#
-# -----------------------------------------------------------------------------
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
 # Copyright (C) 2008-2011 Dirk Meyer, Jason Tackaberry
 #

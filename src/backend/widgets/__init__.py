@@ -2,8 +2,6 @@
 # -----------------------------------------------------------------------------
 # widgets - backend files for the widgets
 # -----------------------------------------------------------------------------
-# $Id:$
-#
 # This directory contains the clutter code executed in the rendering
 # process and not the process importing kaa.candy.
 #

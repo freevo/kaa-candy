@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # thumbnail.py - thumbnail widget for kaa.beacon thumbnail objects
 # -----------------------------------------------------------------------------
-# $Id:$
-#
-# -----------------------------------------------------------------------------
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
 # Copyright (C) 2011 Dirk Meyer
 #

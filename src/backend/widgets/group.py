@@ -2,8 +2,6 @@
 # -----------------------------------------------------------------------------
 # group.py - group widget containing other widgets
 # -----------------------------------------------------------------------------
-# $Id:$
-#
 # This file is imported by the backend process in the clutter
 # mainloop. Importing and using clutter is thread-safe.
 #

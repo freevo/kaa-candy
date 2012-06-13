@@ -2,9 +2,6 @@
 # -----------------------------------------------------------------------------
 # group.py - group widget containing other widgets
 # -----------------------------------------------------------------------------
-# $Id:$
-#
-# -----------------------------------------------------------------------------
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
 # Copyright (C) 2011 Dirk Meyer
 #

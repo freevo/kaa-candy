@@ -2,8 +2,6 @@
 # -----------------------------------------------------------------------------
 # main - Backend main process
 # -----------------------------------------------------------------------------
-# $Id: $
-#
 # The candy server will run an RPC server in the kaa mainloop and will
 # execute commands. A widget is created and prepared in the kaa main
 # loop; everything else, including imports is done in the clutter

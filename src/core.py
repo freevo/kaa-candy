@@ -2,8 +2,6 @@
 # -----------------------------------------------------------------------------
 # core.py - Core classes
 # -----------------------------------------------------------------------------
-# $Id$
-#
 # Note: this file is imported from the application using kaa.candy as
 # well as the rendering process. Therefore, no imports from this file
 # to other parts of kaa.candy are allowed to avoid strange side
