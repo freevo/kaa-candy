@@ -55,7 +55,7 @@ class Stage(object):
         Translate clutter keycode to name and emit signal in main loop. This
         function is a callback from clutter.
         """
-        for key in self.keysyms.get(event.key.keyval, []):
+        for key in self.keysyms.get(event.keyval, []):
             self.server.send_event('key-press', key)
 
     def ensure_redraw(self):
