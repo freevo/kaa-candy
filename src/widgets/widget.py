@@ -74,6 +74,7 @@ class Widget(object):
     candy_backend = 'candy.Widget'
     candyxml_name = None
     candyxml_style = None
+    candyxml_override = False
 
     attributes = []
     attribute_types = {}
@@ -98,7 +99,8 @@ class Widget(object):
     class __metaclass__(type):
         def __new__(meta, name, bases, attrs):
             cls = type.__new__(meta, name, bases, attrs)
-            if 'candyxml_name' in attrs.keys() or 'candyxml_style' in attrs.keys():
+            if 'candyxml_name' in attrs.keys() or 'candyxml_style' in attrs.keys() \
+                    or 'candyxml_override' in attrs.keys():
                 candyxml.register(cls)
             return cls
 

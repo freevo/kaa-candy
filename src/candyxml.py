@@ -48,6 +48,10 @@ class ElementDict(dict):
     def __getattr__(self, attr):
         return self.get(attr)
 
+    def remove(self, *attrs):
+        for attr in attrs:
+            super(ElementDict, self).remove(attr)
+        return self
 
 class Element(object):
     """
@@ -295,7 +299,7 @@ def register(cls):
         if not name in parser:
             parser[name] = Styles()
         parser, name = parser[name], getattr(cls, 'candyxml_style', None)
-    if name in parser:
+    if name in parser and not cls.candyxml_override:
         log.info('%s already registered' % name)
     parser[name] = cls
 
