@@ -83,7 +83,14 @@ class Gstreamer(widget.Widget):
         self.obj.connect("notify::progress", self.event_progress)
         self.obj.connect("eos", self.event_finished)
         self.obj.set_keep_aspect_ratio(True)
-        self.obj.show()
+        if self.audio_only:
+            # audio element
+            if self.visualisation:
+                pipeline = self.obj.get_pipeline()
+                flags = pipeline.get_property('flags')
+                pipeline.set_property('flags', flags | 0x00000008)
+            else:
+                self.obj.hide()
 
     def update(self, modified):
         """

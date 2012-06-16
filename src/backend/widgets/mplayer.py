@@ -117,8 +117,11 @@ class Mplayer(widget.Widget):
             # video playback
             cmd.extend('-fs -wid %s' % str(self.window.id))
             # vpdau
-            if self.config['mplayer.vdpau']:
-                cmd.extend('-vo vdpau,xv,x11 -vc ffvc1vdpau,ffh264vdpau,')
+            if self.audio_only:
+                cmd.extend('-vo null')
+            else:
+                if self.config['mplayer.vdpau']:
+                    cmd.extend('-vo vdpau,xv,x11 -vc ffvc1vdpau,ffh264vdpau,')
             # passthrough
             if self.config['mplayer.passthrough']:
                 args.extend('-ac hwac3,hwdts,')

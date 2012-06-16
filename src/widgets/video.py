@@ -28,7 +28,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Video', 'SEEK_RELATIVE', 'SEEK_ABSOLUTE', 'SEEK_PERCENTAGE',
+__all__ = [ 'Video', 'Audio', 'SEEK_RELATIVE', 'SEEK_ABSOLUTE', 'SEEK_PERCENTAGE',
             'STATE_IDLE', 'STATE_PLAYING', 'STATE_PAUSED' ]
 
 # python imports
@@ -58,7 +58,8 @@ class Video(Widget):
     """
     candyxml_name = 'video'
 
-    attributes = [ 'url', 'config' ]
+    attributes = [ 'url', 'config', 'audio_only' ]
+    audio_only = False
 
     def __init__(self, pos=None, size=None, url=None, player='gstreamer', context=None):
         """
@@ -179,4 +180,31 @@ class Video(Widget):
         """
         Callback from the backend: playback finished
         """
+        self.state = STATE_IDLE
         self.signals['finished'].emit()
+
+
+class Audio(Video):
+    """
+    Hidden video widget for audio only
+    """
+    candyxml_name = 'audio'
+    audio_only = True
+
+    attributes = Video.attributes + [ 'visualisation' ]
+
+    def __init__(self, pos=None, size=None, url=None, player='gstreamer', visualisation=None, 
+                 context=None):
+        """
+        Create the audio widget. If visualisation is None it is invisible.
+        """
+        super(Audio, self).__init__(pos, size, url, player, context)
+        self.visualisation = visualisation
+
+    @classmethod
+    def candyxml_parse(cls, element):
+        """
+        Parse the candyxml element for parameter to create the widget.
+        """
+        return super(Audio, cls).candyxml_parse(element).update(
+            visualisation=element.visualisation)
