@@ -67,6 +67,10 @@ class Video(Widget):
         widget for now. When choosing mplayer it will always open a
         full screen window to play the video.
 
+        This it is not possible to set as argument the player when
+        using CandyXML without defining it in the XML file a special
+        variable 'candy_player' in the context can be used.
+
         The playback can be configured using the config member
         dictionary. Please note, that gstreamer tries to figure out
         most of the stuff itself and AC3 and DTS passthrough only
@@ -86,6 +90,8 @@ class Video(Widget):
             'mplayer.vdpau': False,
             'mplayer.passthrough': False,
         }
+        if not player:
+            player = self.context.get('candy_player')
         self.set_player(player)
 
     @classmethod
@@ -107,7 +113,7 @@ class Video(Widget):
         """
         if self.stage:
             raise RuntimeError('backend widget already created')
-        if player == 'gstreamer':
+        if player == 'gstreamer' or player == None:
             self.candy_backend = 'candy.Gstreamer'
         elif player == 'mplayer':
             self.candy_backend = 'candy.Mplayer'
