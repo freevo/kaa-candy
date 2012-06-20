@@ -5,6 +5,8 @@
 # This file is imported by the backend process in the clutter
 # mainloop. Importing and using clutter is thread-safe.
 #
+# FIXME: port this to cairo + pango like label, maybe it will be
+# faster. As it is now, it is slow. Maybe draw cairo in another thread???
 # -----------------------------------------------------------------------------
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
 # Copyright (C) 2011 Dirk Meyer

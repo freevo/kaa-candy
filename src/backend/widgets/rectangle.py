@@ -5,9 +5,12 @@
 # This file is imported by the backend process in the clutter
 # mainloop. Importing and using clutter is thread-safe.
 #
+# FIXME: instead of using cairo cogl may be faster. But calling
+# get_cogl_texture from a Texture does not work for some strange
+# reason. This should be fixed here in the future.
 # -----------------------------------------------------------------------------
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
-# Copyright (C) 2011 Dirk Meyer
+# Copyright (C) 2012 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
