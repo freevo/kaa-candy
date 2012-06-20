@@ -68,11 +68,12 @@ class Image(Widget):
     candyxml_name = 'image'
     candy_backend = 'candy.ImageTexture'
 
-    attributes = [ 'sync_data', 'modified', 'keep_aspect' ]
+    attributes = [ 'sync_data', 'modified', 'keep_aspect', 'load_async' ]
 
     # image variables
     modified = True
     keep_aspect = False
+    load_async = False
 
     # class variable with a dict of images currently loading
     __current_downloads = {}
