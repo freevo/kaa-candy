@@ -102,12 +102,34 @@ class Mainloop(object):
         Executed inside the clutter thread
         """
         t0 = time.time()
+        freeze = False
         while queue:
             func, args = queue.pop(0)
+            if func == 'freeze':
+                # Freeze the scene. From now on it is not allowed to
+                # go back to the clutter main loop to keep animations
+                # alive or the user will see a half-finished scene.
+                freeze = True
+                continue
             try:
                 func(*args)
             except Exception, e:
                 log.exception('sync error: %s%s', func, args)
+            if not freeze and queue:
+                sync_time = time.time() - t0
+                if sync_time > 0.01:
+                    # We should use the logging module somehow and get the
+                    # logging info to the main process. Only print out the
+                    # sync time if we cannot make 100fps.
+                    print 'kaa.candy warning: sync took %0.4f sec' % sync_time
+                    # For further debug to detect what function /
+                    # widget is slow taht it took way too long:
+                    # print 'last call', func, args
+                if sync_time > 0.001:
+                    # Not finished yet, but the scene is not frozen
+                    # and we can go back to the clutter main loop to
+                    # keep animations alive.
+                    return True
         sync_time = time.time() - t0
         if sync_time > 0.01:
             # We should use the logging module somehow and get the
@@ -158,6 +180,12 @@ class Server(object):
         """
         queue = []
         for cmd, args in tasks:
+            if cmd == 'freeze':
+                # freeze meta-command after that the sync function in
+                # the clutter thread is not allowed to go back to its
+                # main loop to keep animations alive.
+                queue.append(('freeze', None))
+                continue
             func = getattr(self, 'cmd_' + cmd, None)
             if func:
                 try:

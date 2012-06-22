@@ -183,7 +183,11 @@ class Stage(object):
         # prepare all widgets for the sync
         for layer in self.layer:
             layer.sync_prepare()
-        # create new widgets
+        # Create new widgets. The create functions at the backend only
+        # create the widgets and not fill it with the actual
+        # content. This is done later. Remember the ids of the widget
+        # re-arrange the calls later.
+        new_widgets = []
         while Widget._candy_sync_new:
             widget = Widget._candy_sync_new.pop(0)
             widget.stage = self
@@ -191,24 +195,45 @@ class Stage(object):
             while widget.backend.queue:
                 self.commands.append(widget.backend.queue.pop(0))
             tasks.append(('add', (widget.candy_backend, widget._candy_id)))
+            new_widgets.append(widget._candy_id)
         # create stage object if needed
         if not self.initialized:
             self.initialized = True
             tasks.append(('add', ('stage.Stage', -1)))
             tasks.append(('call', (-1, 'init', (self.size, ))))
-        # change parents for the widgets
+        # Change parents for the widgets. Remember the needed calls in
+        # a seperate variable. We need to reparent before updaing
+        # everything here, but maybe do it later on the backend.
+        tasks_reparent = []
         while Widget._candy_sync_reparent:
             widget = Widget._candy_sync_reparent.pop(0)
             if widget.parent:
-                tasks.append(('reparent', (widget._candy_id, widget.parent._candy_id)))
+                tasks_reparent.append(('reparent', (widget._candy_id, widget.parent._candy_id)))
             else:
-                tasks.append(('reparent', (widget._candy_id, None)))
+                tasks_reparent.append(('reparent', (widget._candy_id, None)))
         # sync all children
+        tasks_update = []
         for layer in self.layer:
             if not layer.initialized:
                 tasks.append(('reparent', (layer._candy_id, -1)))
                 layer.initialized = True
-            layer.__sync__(tasks)
+            layer.__sync__(tasks_update)
+        # Now the tricky part. All create, update and move functions
+        # are called in the clutter thread at the backend. If it takes
+        # too long, running animations may look strange. But for new
+        # objects without parents on the backend we can go back to the
+        # clutter main loop from time to time and the user won't see a
+        # partial update. Therefore search for new widgets here that
+        # gets updated and add the update calls to the tasks list
+        # right after the creation. After that add a fake "freeze"
+        # call after which going back to the main loop is not allowed
+        # anymore. After that freeze add the reparent tasks and all
+        # other tasks affecting visible actors.
+        for t in tasks_update[:]:
+            if t[0] == 'update' and t[1][0] in new_widgets:
+                tasks.append(t)
+                tasks_update.remove(t)
+        tasks = tasks + [('freeze', None)] + tasks_reparent + tasks_update
         # add commands for the widgets
         while self.commands:
             tasks.append(('call', self.commands.pop(0)))
