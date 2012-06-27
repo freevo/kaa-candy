@@ -131,6 +131,11 @@ class Gstreamer(widget.Widget):
         Resume playback
         """
         self.obj.set_playing(True)
+        # Sekk nowhere. This is kind of stupid but clutter-gst does
+        # not resume playback unless you seek. This is a bug I have to
+        # check if it is fixed in the latest version and report it if
+        # not.
+        self.do_seek(0, SEEK_RELATIVE)
 
     @requires_state(gst.State.PLAYING, gst.State.PAUSED)
     def do_seek(self, value, type):
@@ -146,7 +151,7 @@ class Gstreamer(widget.Widget):
                 pos = self.obj.get_progress() + (1.0 / self.obj.get_duration()) * value
             if type == SEEK_ABSOLUTE:
                 pos = (1.0 / self.obj.get_duration()) * value
-        self.obj.set_progress(min(pos, 1.0))
+        self.obj.set_progress(max(min(pos, 1.0), 0))
 
     @requires_state(gst.State.PLAYING)
     def do_set_audio(self, idx):
