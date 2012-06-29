@@ -124,7 +124,7 @@ class Mplayer(widget.Widget):
                     cmd.extend('-vo vdpau,xv,x11 -vc ffvc1vdpau,ffh264vdpau,')
             # passthrough
             if self.config['mplayer.passthrough']:
-                args.extend('-ac hwac3,hwdts,')
+                cmd.extend('-ac hwac3,hwdts,')
             self.child = kaa.Process(cmd + [ self.url ])
             self.child.delimiter = ['\r', '\n']
             self.child.stop_command = 'quit\nquit\n'
