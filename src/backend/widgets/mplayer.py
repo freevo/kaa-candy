@@ -173,15 +173,17 @@ class Mplayer(widget.Widget):
             return self.child.write('seek %s %s\n' % (value, s.index(type)))
         # Playback is not started. We can use the seek command line
         # argument.
-        if type == SEEK_RELATIVE:
+        if type in (SEEK_RELATIVE, SEEK_ABSOLUTE):
             # sorry, we do not support more here
             self.cmd.extend('-ss %s' % value)
 
     def do_set_audio(self, idx):
         """
-        Set the audio stream (missing)
+        Set the audio stream
         """
-        pass
+        if self.child:
+            return self.child.write('switch_audio %s\n' % idx)
+        self.cmd.extend('-aid %s' % idx)
 
     #
     # events from mplayer
