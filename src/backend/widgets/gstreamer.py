@@ -160,6 +160,12 @@ class Gstreamer(widget.Widget):
         """
         self.obj.set_audio_stream(idx)
 
+    def do_set_subtitle(self, idx):
+        """
+        Set the subtitle stream (-1 == none)
+        """
+        self.obj.set_subtitle_track(idx)
+
     #
     # events from gstreamer
     #

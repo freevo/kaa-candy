@@ -180,6 +180,13 @@ class Gstreamer2(widget.Widget):
             return
         self.pipeline.set_property('current-audio', idx)
 
+    @requires_state(gst.State.PLAYING)
+    def do_set_subtitle(self, idx):
+        """
+        Set the subtitle stream (-1 == none)
+        """
+        pass
+
     #
     # events from gstreamer
     #

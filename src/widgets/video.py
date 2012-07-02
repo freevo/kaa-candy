@@ -166,6 +166,12 @@ class Video(Widget):
         """
         self.backend.do_set_audio(idx)
 
+    def set_subtitle(self, idx):
+        """
+        Set the subtitle sream idx. Use -1 to turn subtitles off.
+        """
+        self.backend.do_set_subtitle(idx)
+
     #
     # backend callbacks
     #

@@ -185,6 +185,15 @@ class Mplayer(widget.Widget):
             return self.child.write('switch_audio %s\n' % idx)
         self.cmd.extend('-aid %s' % idx)
 
+    def do_set_subtitle(self, idx):
+        """
+        Set the subtitle stream (-1 == none)
+        """
+        if self.child:
+            return self.child.write('sub_select %s\n' % idx)
+        if idx >= 0:
+            return self.cmd.extend('-sid %s' % idx)
+
     #
     # events from mplayer
     #
