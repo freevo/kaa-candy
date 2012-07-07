@@ -116,7 +116,7 @@ class Mplayer(widget.Widget):
                 'sync': True
             }
             cmd = self.cmd[:]
-            cmd.extend('-v -osdlevel 0 -slave -nolirc -nojoystick -identify')
+            cmd.extend('-v -osdlevel 0 -slave -nolirc -nojoystick -identify -framedrop')
             # video playback
             cmd.extend('-fs -wid %s' % str(self.window.id))
             # vpdau
