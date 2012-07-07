@@ -47,6 +47,7 @@ import sys
 # Clutter and GStreamer GI bindings
 from gi.repository import Clutter as clutter, ClutterGst, Gst as gst
 
+import kaa.metadata
 import widget
 
 def requires_state(*states):
@@ -99,6 +100,19 @@ class Gstreamer(widget.Widget):
         super(Gstreamer, self).update(modified)
         if 'url' in modified and self.url:
             self.obj.set_filename(self.url)
+            streaminfo = {
+                'audio': {},
+                'subtitle': {},
+                'is_menu': False,
+                'sync': True
+            }
+            metadata = kaa.metadata.parse(self.url)
+            for audio in metadata.audio:
+                streaminfo['audio'][audio.id] = None if audio.langcode == 'und' else audio.langcode
+            for sub in metadata.subtitles:
+                streaminfo['subtitle'][sub.id] = None if sub.langcode == 'und' else sub.langcode
+            self.send_widget_event('streaminfo', streaminfo)
+
 
     #
     # control callbacks from the main process
@@ -116,7 +130,7 @@ class Gstreamer(widget.Widget):
         """
         self.obj.set_playing(False)
         self.obj.set_filename('')
-        self.server.send_event('widget_call', self.wid, 'finished')
+        self.send_widget_event('finished')
 
     @requires_state(gst.State.PLAYING, gst.State.PAUSED)
     def do_pause(self):
@@ -131,7 +145,7 @@ class Gstreamer(widget.Widget):
         Resume playback
         """
         self.obj.set_playing(True)
-        # Sekk nowhere. This is kind of stupid but clutter-gst does
+        # Seek nowhere. This is kind of stupid but clutter-gst does
         # not resume playback unless you seek. This is a bug I have to
         # check if it is fixed in the latest version and report it if
         # not.
@@ -166,6 +180,12 @@ class Gstreamer(widget.Widget):
         """
         self.obj.set_subtitle_track(idx)
 
+    def do_nav_command(self, cmd):
+        """
+        Send DVD navigation command
+        """
+        pass
+
     #
     # events from gstreamer
     #
@@ -176,7 +196,7 @@ class Gstreamer(widget.Widget):
         """
         if self.state in (gst.State.PLAYING, gst.State.PAUSED):
             pos = media.get_progress() * media.get_duration()
-            self.server.send_event('widget_call', self.wid, 'progress', pos)
+            self.send_widget_event('progress', pos)
             return
         # FIXME: we should not use the progress signal here and use
         # the correct one for state changes. But I cannot find the
@@ -197,7 +217,7 @@ class Gstreamer(widget.Widget):
         """
         Finished event
         """
-        self.server.send_event('widget_call', self.wid, 'finished')
+        self.send_widget_event('finished')
 
 # initialize gstreamer
 ClutterGst.init(sys.argv)

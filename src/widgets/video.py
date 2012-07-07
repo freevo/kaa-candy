@@ -29,7 +29,7 @@
 # -----------------------------------------------------------------------------
 
 __all__ = [ 'Video', 'Audio', 'SEEK_RELATIVE', 'SEEK_ABSOLUTE', 'SEEK_PERCENTAGE',
-            'STATE_IDLE', 'STATE_PLAYING', 'STATE_PAUSED' ]
+            'STATE_IDLE', 'STATE_PLAYING', 'STATE_PAUSED', 'NEXT' ]
 
 # python imports
 import logging
@@ -51,6 +51,8 @@ SEEK_PERCENTAGE = 'SEEK_PERCENTAGE'
 STATE_IDLE = 'STATE_IDLE'
 STATE_PLAYING = 'STATE_PLAYING'
 STATE_PAUSED = 'STATE_PAUSED'
+
+NEXT = 'NEXT'
 
 class Video(Widget):
     """
@@ -84,7 +86,7 @@ class Video(Widget):
             # variable from the context, e.g. $varname
             url = self.context.get(url) or ''
         self.url = url
-        self.signals = kaa.Signals('finished', 'progress')
+        self.signals = kaa.Signals('finished', 'progress', 'streaminfo')
         self.state = STATE_IDLE
         # player configuration
         self.config = {
@@ -94,6 +96,14 @@ class Video(Widget):
         if not player:
             player = self.context.get('candy_player')
         self.set_player(player)
+        # current streaminfo / audio / subtitle values
+        self.streaminfo = {
+            'audio': {},
+            'subtitle': {},
+            'is_menu': False,
+        }
+        self.aid = 0
+        self.sid = -1
 
     @classmethod
     def candyxml_parse(cls, element):
@@ -164,13 +174,48 @@ class Video(Widget):
         """
         Set the audio channel to stream number idx
         """
+        if idx == NEXT:
+            if not self.streaminfo or not self.streaminfo['audio']:
+                return 0
+            aid = self.streaminfo['audio'].keys()
+            aid.sort()
+            if not self.aid in aid:
+                idx = 0
+            else:
+                idx = aid.index(self.aid) + 1
+                if idx >= len(aid):
+                    idx = 0
+            idx = aid[idx]
         self.backend.do_set_audio(idx)
+        self.aid = idx
+        return idx
 
     def set_subtitle(self, idx):
         """
         Set the subtitle sream idx. Use -1 to turn subtitles off.
         """
+        if idx == NEXT:
+            if not self.streaminfo or not self.streaminfo['subtitle']:
+                return -1
+            sid = self.streaminfo['subtitle'].keys()
+            sid.sort()
+            if not self.sid in sid:
+                idx = sid[0]
+            else:
+                idx = sid.index(self.sid) + 1
+                if idx >= len(sid):
+                    idx = -1
+                else:
+                    idx = sid[idx]
         self.backend.do_set_subtitle(idx)
+        self.sid = idx
+        return idx
+
+    def nav_command(self, cmd):
+        """
+        Send DVD navigation command
+        """
+        self.backend.do_nav_command(cmd)
 
     #
     # backend callbacks
@@ -188,7 +233,14 @@ class Video(Widget):
         """
         self.state = STATE_IDLE
         self.signals['finished'].emit()
-
+    
+    def event_streaminfo(self, streaminfo):
+        """
+        Callback from the backend: streaminfo
+        """
+        del streaminfo['sync']
+        self.signals['streaminfo'].emit(streaminfo)
+        self.streaminfo = streaminfo
 
 class Audio(Video):
     """

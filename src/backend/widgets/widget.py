@@ -58,6 +58,12 @@ class Widget(object):
         """
         pass
 
+    def send_widget_event(self, *args):
+        """
+        Send an event to the candy widget
+        """
+        self.server.send_event('widget_call', self.wid, *args)
+        
     def create(self):
         """
         Create the clutter object

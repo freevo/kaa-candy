@@ -112,8 +112,14 @@ class Mplayer(widget.Widget):
             self.window.set_cursor_visible(False)
             self.window.signals['key_press_event'].connect_weak(self.event_key)
             self.window.is_hidden = True
+            self.streaminfo = {
+                'audio': {},
+                'subtitle': {},
+                'is_menu': False,
+                'sync': True
+            }
             cmd = self.cmd[:]
-            cmd.extend('-v -osdlevel 0 -slave -nolirc -nojoystick')
+            cmd.extend('-v -osdlevel 0 -slave -nolirc -nojoystick -identify')
             # video playback
             cmd.extend('-fs -wid %s' % str(self.window.id))
             # vpdau
@@ -125,7 +131,10 @@ class Mplayer(widget.Widget):
             # passthrough
             if self.config['mplayer.passthrough']:
                 cmd.extend('-ac hwac3,hwdts,')
-            self.child = kaa.Process(cmd + [ self.url ])
+            if self.url.startswith('dvd://'):
+                self.child = kaa.Process(cmd + [ '-nocache', '-dvd-device', self.url[6:-1], 'dvdnav://' ])
+            else:
+                self.child = kaa.Process(cmd + [ self.url ])
             self.child.delimiter = ['\r', '\n']
             self.child.stop_command = 'quit\nquit\n'
             self.child.signals['exited'].connect_weak_once(self.event_exit)
@@ -183,7 +192,6 @@ class Mplayer(widget.Widget):
         """
         if self.child:
             return self.child.write('switch_audio %s\n' % idx)
-        self.cmd.extend('-aid %s' % idx)
 
     def do_set_subtitle(self, idx):
         """
@@ -191,9 +199,13 @@ class Mplayer(widget.Widget):
         """
         if self.child:
             return self.child.write('sub_select %s\n' % idx)
-        if idx >= 0:
-            return self.cmd.extend('-sid %s' % idx)
 
+    def do_nav_command(self, cmd):
+        """
+        Send DVD navigation command
+        """
+        self.child.write('dvdnav %s\n' % cmd)
+        
     #
     # events from mplayer
     #
@@ -210,12 +222,36 @@ class Mplayer(widget.Widget):
         """
         if line.startswith('V:') or line.startswith('A:'):
             m = RE_STATUS.search(line)
-            if not m:
-                return
-            if self.window.is_hidden:
-                self.window.raise_()
-                self.window.is_hidden = False
-            self.server.send_event('widget_call', self.wid, 'progress', float(m.groups()[0]))
+            if m:
+                if self.window.is_hidden:
+                    self.window.raise_()
+                    self.window.is_hidden = False
+                if self.streaminfo['sync']:
+                    self.send_widget_event('streaminfo', self.streaminfo)
+                    self.streaminfo['sync'] = False
+            self.send_widget_event('progress', float(m.groups()[0]))
+            return
+        if line.startswith('ID_') or line.startswith('DVDNAV'):
+            self.streaminfo['sync'] = True
+            line = line.strip()
+            if line.startswith('ID_AUDIO_ID'):
+                aid = int(line.strip().split('=')[1])
+                if not aid in self.streaminfo['audio']:
+                    self.streaminfo['audio'][aid] = None
+            if line.startswith('ID_AID') and line.find('_LANG=') > 0:
+                aid, lang = line.split('=')
+                self.streaminfo['audio'][int(aid[7:-5])] = lang
+            if line.startswith('ID_SUBTITLE_ID'):
+                sid = int(line.strip().split('=')[1])
+                if not sid in self.streaminfo['subtitle']:
+                    self.streaminfo['subtitle'][sid] = None
+            if line.startswith('ID_SID') and line.find('_LANG=') > 0:
+                sid, lang = line.split('=')
+                self.streaminfo['subtitle'][int(sid[7:-5])] = lang
+            if line.startswith('DVDNAV_TITLE_IS_MENU'):
+                self.streaminfo['is_menu'] = True
+            if line.startswith('DVDNAV_TITLE_IS_MOVIE'):
+                self.streaminfo['is_menu'] = False
 
     def event_exit(self, code):
         """
