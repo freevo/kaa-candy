@@ -32,6 +32,7 @@ __all__ = [ 'Label' ]
 
 # python
 import re
+import kaa.base
 
 # kaa.candy imports
 from widget import Widget
@@ -80,7 +81,7 @@ class Label(Widget):
             match = matchobj.groups()[0] or matchobj.groups()[1]
             s = self.context.get(match, '')
             if s is not None:
-                return unicode(s)
+                return kaa.base.py3_str(s, coerce=True)
             return ''
         if self.context:
             # we have a context, use it

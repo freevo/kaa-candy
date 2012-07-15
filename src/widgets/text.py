@@ -31,6 +31,7 @@
 __all__ = [ 'Text' ]
 
 import re
+import kaa.base
 
 # we need to import clutter here to calculate the size. The Clutter
 # mainloop is not started. If someone knows a better way to get the
@@ -88,7 +89,7 @@ class Text(Widget):
             match = matchobj.groups()[0] or matchobj.groups()[1]
             s = self.context.get(match, '')
             if s is not None:
-                return unicode(s)
+                return kaa.base.py3_str(s, coerce=True)
             return ''
         if self.context:
             # we have a context, use it
