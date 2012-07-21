@@ -94,6 +94,7 @@ class Widget(object):
     # internal object variables
     _candy_id = None
     _candy_dirty = True
+    _candy_stack = None
     stage = None
 
     class __metaclass__(type):
@@ -420,6 +421,7 @@ class Widget(object):
 
     @parent.setter
     def parent(self, parent):
+        self._candy_stack = None
         if not self in Widget._candy_sync_reparent:
             self.queue_rendering()
         if self.__parent:

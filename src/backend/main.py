@@ -227,13 +227,13 @@ class Server(object):
                 args[pos] = self.widgets[int(value[13:])]
         return getattr(self.widgets[wid], cmd), args
 
-    def cmd_reparent(self, child, parent):
+    def cmd_reparent(self, child, parent, pos):
         """
         command for sync: reparent the child
         """
         if parent:
-            return self.widgets[child].reparent, (self.widgets[parent],)
-        return self.widgets[child].reparent, (None,)
+            return self.widgets[child].reparent, (self.widgets[parent], self.widgets.get(pos))
+        return self.widgets[child].reparent, (None, None)
 
     def cmd_position(self, wid, x, y):
         """
