@@ -312,7 +312,9 @@ class ConditionGroup(AbstractGroup):
                 condition = not cmp(str(condition).lower(), str(value).lower())
             if condition:
                 return pos == old
-        return False
+        # No condition matches. Only valid if we had the "problem"
+        # before when the widget was created
+        return old == -1
 
     @classmethod
     def candyxml_parse(cls, element):
