@@ -197,6 +197,12 @@ class Mplayer(widget.Widget):
         if self.child:
             return self.child.write('sub_select %s\n' % idx)
 
+    def do_set_aspect(self, aspect):
+        """
+        Set the aspect ratio
+        """
+        pass
+
     def do_nav_command(self, cmd):
         """
         Send DVD navigation command
