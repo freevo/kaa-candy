@@ -52,6 +52,13 @@ STATE_IDLE = 'STATE_IDLE'
 STATE_PLAYING = 'STATE_PLAYING'
 STATE_PAUSED = 'STATE_PAUSED'
 
+ASPECT_ORIGINAL = 'ASPECT_ORIGINAL'
+ASPECT_16_9 = 'ASPECT_16_9'
+ASPECT_4_3 = 'ASPECT_4_3'
+ASPECT_ZOOM = 'ASPECT_ZOOM'
+
+ASPECTS = [ ASPECT_ORIGINAL, ASPECT_16_9, ASPECT_4_3, ASPECT_ZOOM ]
+
 NEXT = 'NEXT'
 
 class Video(Widget):
@@ -104,6 +111,7 @@ class Video(Widget):
         }
         self.aid = 0
         self.sid = -1
+        self.aspect = ASPECT_ORIGINAL
 
     @classmethod
     def candyxml_parse(cls, element):
@@ -210,6 +218,15 @@ class Video(Widget):
         self.backend.do_set_subtitle(idx)
         self.sid = idx
         return idx
+
+    def set_aspect(self, aspect):
+        """
+        Set the aspect ratio
+        """
+        if aspect == NEXT:
+            aspect = ASPECTS[(ASPECTS.index(self.aspect) + 1) % len(ASPECTS)]
+        self.backend.do_set_aspect(aspect)
+        self.aspect = aspect
 
     def nav_command(self, cmd):
         """

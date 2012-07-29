@@ -64,12 +64,19 @@ SEEK_RELATIVE = 'SEEK_RELATIVE'
 SEEK_ABSOLUTE = 'SEEK_ABSOLUTE'
 SEEK_PERCENTAGE = 'SEEK_PERCENTAGE'
 
+ASPECT_ORIGINAL = 'ASPECT_ORIGINAL'
+ASPECT_16_9 = 'ASPECT_16_9'
+ASPECT_4_3 = 'ASPECT_4_3'
+ASPECT_ZOOM = 'ASPECT_ZOOM'
+
 class Gstreamer(widget.Widget):
     """
     Gstreamer video widget.
     """
 
     state = gst.State.NULL
+    aspect = original_aspect = None
+    zoom = 1
 
     def create(self):
         """
@@ -80,7 +87,7 @@ class Gstreamer(widget.Widget):
         self.obj.set_seek_flags(ClutterGst.SeekFlags(1))
         self.obj.connect("notify::progress", self.event_progress)
         self.obj.connect("eos", self.event_finished)
-        self.obj.set_keep_aspect_ratio(True)
+        self.obj.connect_after("size-change", self.event_size_change)
         if self.audio_only:
             # audio element
             if self.visualisation:
@@ -95,6 +102,8 @@ class Gstreamer(widget.Widget):
         Render the widget
         """
         super(Gstreamer, self).update(modified)
+        if 'width' in modified or 'height' in modified or 'x' in modified or 'y' in modified:
+            self.calculate_geometry()
         if 'url' in modified and self.url:
             self.obj.set_filename(self.url)
             streaminfo = {
@@ -112,6 +121,22 @@ class Gstreamer(widget.Widget):
                     streaminfo['subtitle'][sub.id] = None if sub.langcode == 'und' else sub.langcode
             self.send_widget_event('streaminfo', streaminfo)
 
+
+    def calculate_geometry(self, secs=0):
+        """
+        Calculate geometry values based on requested geometry and aspect
+        """
+        if not self.aspect:
+            return
+        width, height = self.width * self.zoom, self.height * self.zoom
+        if int(height * self.aspect) > width:
+            height = int(width / self.aspect)
+        else:
+            width = int(height * self.aspect)
+        x = self.x + int(self.width - width) / 2
+        y = self.y + int(self.height - height) / 2
+        self.obj.animatev(clutter.AnimationMode.EASE_IN_QUAD, int(secs * 1000) or 1, 
+             ['x', 'y', 'width', 'height'], [x,y,width, height])
 
     #
     # control callbacks from the main process
@@ -179,6 +204,24 @@ class Gstreamer(widget.Widget):
         """
         self.obj.set_subtitle_track(idx)
 
+    def do_set_aspect(self, aspect):
+        """
+        Set the aspect ratio
+        """
+        if aspect == ASPECT_ORIGINAL:
+            self.zoom = 1
+            self.aspect = self.original_aspect
+        if aspect == ASPECT_16_9:
+            self.zoom = 1
+            self.aspect = 16.0 / 9
+        if aspect == ASPECT_4_3:
+            self.zoom = 1
+            self.aspect = 4.0 / 3
+        if aspect == ASPECT_ZOOM:
+            self.aspect = 4.0 / 3
+            self.zoom = 4.0 / 3
+        self.calculate_geometry(0.2)
+
     def do_nav_command(self, cmd):
         """
         Send DVD navigation command
@@ -188,6 +231,11 @@ class Gstreamer(widget.Widget):
     #
     # events from gstreamer
     #
+
+    def event_size_change(self, texture, base_width, base_height):
+        self.aspect = self.original_aspect = float(base_width) / base_height
+        self.zoom = 1
+        self.calculate_geometry()
 
     def event_progress(self, media, pspec):
         """

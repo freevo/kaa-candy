@@ -208,14 +208,14 @@ class Stage(object):
         while Widget._candy_sync_reparent:
             widget = Widget._candy_sync_reparent.pop(0)
             if widget.parent:
-                tasks_reparent.append(('reparent', (widget._candy_id, widget.parent._candy_id)))
+                tasks_reparent.append(('reparent', (widget._candy_id, widget.parent._candy_id, widget._candy_stack)))
             else:
-                tasks_reparent.append(('reparent', (widget._candy_id, None)))
+                tasks_reparent.append(('reparent', (widget._candy_id, None, None)))
         # sync all children
         tasks_update = []
         for layer in self.layer:
             if not layer.initialized:
-                tasks.append(('reparent', (layer._candy_id, -1)))
+                tasks.append(('reparent', (layer._candy_id, -1, None)))
                 layer.initialized = True
             layer.__sync__(tasks_update)
         # Now the tricky part. All create, update and move functions

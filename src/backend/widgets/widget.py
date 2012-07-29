@@ -77,14 +77,19 @@ class Widget(object):
             self.obj.get_parent().remove_actor(self.obj)
         self.obj = None
 
-    def reparent(self, parent):
+    def reparent(self, parent, sibling):
         """
         Reparent the clutter object
         Executed in the clutter thread
         """
         if self.obj.get_parent():
             self.obj.get_parent().remove_actor(self.obj)
-        if parent:
+        if parent and sibling and sibling.obj.get_parent():
+            parent.obj.insert_child_above(self.obj, sibling.obj)
+        elif parent and sibling:
+            print 'oops', sibling.wid
+            parent.obj.add_actor(self.obj)
+        elif parent:
             parent.obj.add_actor(self.obj)
 
     def set_position(self):

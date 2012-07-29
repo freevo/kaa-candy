@@ -96,10 +96,7 @@ class AbstractGroup(Widget):
             if child.freeze_context:
                 continue
             if not child.supports_context(context):
-                # FIXME: put new child at the same position in the
-                # stack as the old one
-                new = child.__template__(context=context)
-                self.replace(child, new)
+                self.replace(child, child.__template__(context=context))
             else:
                 child.context = context
 
@@ -207,6 +204,17 @@ class AbstractGroup(Widget):
         replace event.
         """
         replacement.parent = self
+        replacement._candy_stack = child._candy_id
+        if child in Widget._candy_sync_reparent:
+            # The old child already is in replacement mode, put the
+            # new one where the old one is. FIXME: there are some
+            # strange reasons where this does not work as expected. I
+            # have no idea why and it is hard to create.
+            replacement._candy_stack = child._candy_stack
+            Widget._candy_sync_reparent.remove(replacement)
+            Widget._candy_sync_reparent.insert(Widget._candy_sync_reparent.index(child)+1, replacement)
+            self.children.remove(replacement)
+            self.children.insert(self.children.index(child), replacement)
         child.freeze_context = True
         try:
             replacing = child.emit('replace', child, replacement)
@@ -304,7 +312,9 @@ class ConditionGroup(AbstractGroup):
                 condition = not cmp(str(condition).lower(), str(value).lower())
             if condition:
                 return pos == old
-        return False
+        # No condition matches. Only valid if we had the "problem"
+        # before when the widget was created
+        return old == -1
 
     @classmethod
     def candyxml_parse(cls, element):
