@@ -104,10 +104,12 @@ class Gstreamer(widget.Widget):
                 'sync': True
             }
             metadata = kaa.metadata.parse(self.url)
-            for audio in metadata.audio:
-                streaminfo['audio'][audio.id] = None if audio.langcode == 'und' else audio.langcode
-            for sub in metadata.subtitles:
-                streaminfo['subtitle'][sub.id] = None if sub.langcode == 'und' else sub.langcode
+            if 'audio' in metadata:
+                # video item, not audio only
+                for audio in metadata.audio:
+                    streaminfo['audio'][audio.id] = None if audio.langcode == 'und' else audio.langcode
+                for sub in metadata.subtitles:
+                    streaminfo['subtitle'][sub.id] = None if sub.langcode == 'und' else sub.langcode
             self.send_widget_event('streaminfo', streaminfo)
 
 
