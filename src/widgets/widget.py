@@ -305,6 +305,12 @@ class Widget(object):
         """
         self.backend.lower_bottom()
 
+    def above_sibling(self, sibling):
+        """
+        Move the widget above the given sibling
+        """
+        self.backend.above_sibling('candy:widget:%s' % sibling._candy_id)
+        
     def unparent(self):
         """
         Unparent the widget. Calls widget.parent = None

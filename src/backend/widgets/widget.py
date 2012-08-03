@@ -111,6 +111,12 @@ class Widget(object):
         """
         self.obj.lower_bottom()
 
+    def above_sibling(self, sibling):
+        """
+        Move the widget above the given sibling
+        """
+        self.obj.get_parent().set_child_above_sibling(self.obj, sibling.obj)
+
     def update(self, modified):
         """
         Render the widget
