@@ -103,14 +103,19 @@ class Stage(object):
         self.scale = None
         self.commands = []
 
-    def add_layer(self):
+    def add_layer(self, layer=None, sibling=None):
         """
         Add a new layer and return its id
         """
-        layer = Layer(size=self.size)
+        if layer is None:
+            layer = Layer(size=self.size)
         if self.scale:
             (layer.scale_x, layer.scale_y), (layer.width, layer.height) = self.scale
-        self.layer.append(layer)
+        if sibling:
+            self.layer.insert(self.layer.index(sibling)+1, layer)
+            layer.above_sibling(sibling)
+        else:
+            self.layer.append(layer)
         return len(self.layer) - 1
 
     def hide(self):
