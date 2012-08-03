@@ -96,7 +96,7 @@ class Properties(dict, Modifier):
         @param widget: a kaa.candy.Widget
         """
         for key, value in self.items():
-            setattr(widget, key, value)
+            setattr(widget, key.replace('-', '_'), value)
         return widget
 
     @classmethod
