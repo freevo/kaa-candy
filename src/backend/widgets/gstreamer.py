@@ -233,6 +233,8 @@ class Gstreamer(widget.Widget):
     #
 
     def event_size_change(self, texture, base_width, base_height):
+        if self.audio_only and self.visualisation:
+            return
         self.aspect = self.original_aspect = float(base_width) / base_height
         self.zoom = 1
         self.calculate_geometry()
