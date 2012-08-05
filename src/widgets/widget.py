@@ -139,11 +139,13 @@ class Widget(object):
     scale_y = 1
     anchor_point = 0, 0
 
+    visible = True
+
     # if True, the context will not be updated by the parent
     freeze_context = False
 
     def __init__(self, pos=None, size=None, context=None):
-        self.attributes = self.attributes + ['xalign', 'yalign', 'opacity', 'scale_x', 'scale_y', 'anchor_point']
+        self.attributes = self.attributes + ['xalign', 'yalign', 'opacity', 'scale_x', 'scale_y', 'anchor_point', 'visible']
         self._candy_events = {}
         global next_id
         self._candy_id = next_id

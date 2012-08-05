@@ -132,6 +132,11 @@ class Widget(object):
             self.obj.set_scale(self.scale_x, self.scale_y)
         if 'anchor_point' in modified:
             self.obj.set_anchor_point(*self.anchor_point)
+        if 'visible' in modified:
+            if self.visible:
+                self.obj.show()
+            else:
+                self.obj.hide()
 
     def animate(self, ease, secs, *args):
         # Note: it is not possible to stop or modify an animation
