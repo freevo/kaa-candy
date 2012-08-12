@@ -67,10 +67,12 @@ class Video(Widget):
     """
     candyxml_name = 'video'
 
-    attributes = [ 'url', 'config', 'audio_only' ]
+    attributes = [ 'uri', 'config', 'audio_only' ]
     audio_only = False
 
-    def __init__(self, pos=None, size=None, url=None, player='gstreamer', context=None):
+    __uri = None
+
+    def __init__(self, pos=None, size=None, uri=None, player='gstreamer', context=None):
         """
         Create the video widget. The widget supports gstreamer
         (default) and mplayer but only gstreamer can be used as real
@@ -89,10 +91,7 @@ class Video(Widget):
         more or changed options.
         """
         super(Video, self).__init__(pos, size, context)
-        if url and isinstance(url, (str, unicode)) and url.startswith('$'):
-            # variable from the context, e.g. $varname
-            url = self.context.get(url) or ''
-        self.url = url
+        self.uri = uri
         self.signals = kaa.Signals('finished', 'progress', 'streaminfo')
         self.state = STATE_IDLE
         # player configuration
@@ -113,13 +112,26 @@ class Video(Widget):
         self.sid = -1
         self.aspect = ASPECT_ORIGINAL
 
+    @property
+    def uri(self):
+        return self.__uri
+
+    @uri.setter
+    def uri(self, value):
+        if value and isinstance(value, (str, unicode)) and value.startswith('$'):
+            # variable from the context, e.g. $varname
+            value = self.context.get(value) or ''
+        if value and not value.find('://') > 0:
+            value = 'file://' + value
+        self.__uri = value
+
     @classmethod
     def candyxml_parse(cls, element):
         """
         Parse the candyxml element for parameter to create the widget.
         """
         return super(Video, cls).candyxml_parse(element).update(
-            url=element.url or element.filename, player=element.player)
+            uri=element.uri or element.filename, player=element.player)
 
     #
     # public API to control the player
@@ -268,12 +280,12 @@ class Audio(Video):
 
     attributes = Video.attributes + [ 'visualisation' ]
 
-    def __init__(self, pos=None, size=None, url=None, player='gstreamer', visualisation=None, 
+    def __init__(self, pos=None, size=None, uri=None, player='gstreamer', visualisation=None, 
                  context=None):
         """
         Create the audio widget. If visualisation is None it is invisible.
         """
-        super(Audio, self).__init__(pos, size, url, player, context)
+        super(Audio, self).__init__(pos, size, uri, player, context)
         self.visualisation = visualisation
 
     @classmethod

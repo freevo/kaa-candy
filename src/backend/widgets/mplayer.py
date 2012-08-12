@@ -128,10 +128,10 @@ class Mplayer(widget.Widget):
             # passthrough
             if self.config['mplayer.passthrough']:
                 cmd.extend('-ac hwac3,hwdts,')
-            if self.url.startswith('dvd://'):
-                self.child = kaa.Process(cmd + [ '-nocache', '-dvd-device', self.url[6:-1], 'dvdnav://' ])
+            if self.uri.startswith('dvd://'):
+                self.child = kaa.Process(cmd + [ '-nocache', '-dvd-device', self.uri[6:-1], 'dvdnav://' ])
             else:
-                self.child = kaa.Process(cmd + [ self.url ])
+                self.child = kaa.Process(cmd + [ self.uri ])
             self.child.delimiter = ['\r', '\n']
             self.child.stop_command = 'quit\nquit\n'
             self.child.signals['exited'].connect_weak_once(self.event_exit)
