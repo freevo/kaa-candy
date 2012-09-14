@@ -219,6 +219,12 @@ class Video(Widget):
         self.sid = idx
         return idx
 
+    def set_deinterlace(self, value):
+        """
+        Turn on/off deinterlacing
+        """
+        self.backend.do_set_deinterlace(value)
+
     def set_aspect(self, aspect):
         """
         Set the aspect ratio
@@ -250,7 +256,7 @@ class Video(Widget):
         """
         self.state = STATE_IDLE
         self.signals['finished'].emit()
-    
+
     def event_streaminfo(self, streaminfo):
         """
         Callback from the backend: streaminfo
@@ -268,7 +274,7 @@ class Audio(Video):
 
     attributes = Video.attributes + [ 'visualisation' ]
 
-    def __init__(self, pos=None, size=None, url=None, player='gstreamer', visualisation=None, 
+    def __init__(self, pos=None, size=None, url=None, player='gstreamer', visualisation=None,
                  context=None):
         """
         Create the audio widget. If visualisation is None it is invisible.

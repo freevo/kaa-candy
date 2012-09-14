@@ -124,7 +124,13 @@ class Mplayer(widget.Widget):
                 cmd.extend('-vo null')
             else:
                 if self.config['mplayer.vdpau']:
-                    cmd.extend('-vo vdpau,xv,x11 -vc ffvc1vdpau,ffh264vdpau,')
+                    # Add deinterlacer. We disable it later when the
+                    # video starts
+                    cmd.extend('-vo vdpau:deint=2,xv,x11 -vc ffvc1vdpau,ffh264vdpau,')
+                else:
+                    # Add deinterlacer. We disable it later when the
+                    # video starts
+                    cmd.extend('-vf yadif')
             # passthrough
             if self.config['mplayer.passthrough']:
                 cmd.extend('-ac hwac3,hwdts,')
@@ -203,12 +209,19 @@ class Mplayer(widget.Widget):
         """
         pass
 
+    def do_set_deinterlace(self, value):
+        """
+        Turn on/off deinterlacing
+        """
+        if self.child:
+            return self.child.write('set_property deinterlace %d\n' % int(value))
+
     def do_nav_command(self, cmd):
         """
         Send DVD navigation command
         """
         self.child.write('dvdnav %s\n' % cmd)
-        
+
     #
     # events from mplayer
     #
@@ -227,6 +240,9 @@ class Mplayer(widget.Widget):
             m = RE_STATUS.search(line)
             if m:
                 if self.window.is_hidden:
+                    # We just started. Disable the deinterlacer and
+                    # show the window
+                    self.do_set_deinterlace(False)
                     self.window.raise_()
                     self.window.is_hidden = False
                 if self.streaminfo['sync']:

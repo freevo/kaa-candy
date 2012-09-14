@@ -135,7 +135,7 @@ class Gstreamer(widget.Widget):
             width = int(height * self.aspect)
         x = self.x + int(self.width - width) / 2
         y = self.y + int(self.height - height) / 2
-        self.obj.animatev(clutter.AnimationMode.EASE_IN_QUAD, int(secs * 1000) or 1, 
+        self.obj.animatev(clutter.AnimationMode.EASE_IN_QUAD, int(secs * 1000) or 1,
              ['x', 'y', 'width', 'height'], [x,y,width, height])
 
     #
@@ -221,6 +221,12 @@ class Gstreamer(widget.Widget):
             self.aspect = 4.0 / 3
             self.zoom = 4.0 / 3
         self.calculate_geometry(0.2)
+
+    def do_set_deinterlace(self, value):
+        """
+        Turn on/off deinterlacing
+        """
+        pass
 
     def do_nav_command(self, cmd):
         """
