@@ -104,15 +104,15 @@ class Gstreamer(widget.Widget):
         super(Gstreamer, self).update(modified)
         if 'width' in modified or 'height' in modified or 'x' in modified or 'y' in modified:
             self.calculate_geometry()
-        if 'url' in modified and self.url:
-            self.obj.set_filename(self.url)
+        if 'uri' in modified and self.uri:
+            self.obj.set_uri(self.uri)
             streaminfo = {
                 'audio': {},
                 'subtitle': {},
                 'is_menu': False,
                 'sync': True
             }
-            metadata = kaa.metadata.parse(self.url)
+            metadata = kaa.metadata.parse(self.uri)
             if 'audio' in metadata:
                 # video item, not audio only
                 for audio in metadata.audio:
@@ -239,6 +239,8 @@ class Gstreamer(widget.Widget):
     #
 
     def event_size_change(self, texture, base_width, base_height):
+        if self.audio_only and self.visualisation:
+            return
         self.aspect = self.original_aspect = float(base_width) / base_height
         self.zoom = 1
         self.calculate_geometry()

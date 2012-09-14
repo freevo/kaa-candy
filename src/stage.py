@@ -51,10 +51,11 @@ class Layer(Group):
     """
     Group on the stage as parent for widgets added to the stage.
     """
-    initialized = False
+    
+    _candy_layer_status = 0     # 0 new, 1 active, 2 destroyed
 
-    def __init__(self, size):
-        super(Layer, self).__init__(size=size)
+    def __init__(self, size, widgets=[], context=None):
+        super(Layer, self).__init__(size=size, widgets=widgets, context=context)
 
     @property
     def parent(self):
@@ -103,15 +104,28 @@ class Stage(object):
         self.scale = None
         self.commands = []
 
-    def add_layer(self):
+    def add_layer(self, layer=None, sibling=None):
         """
         Add a new layer and return its id
         """
-        layer = Layer(size=self.size)
+        if layer is None:
+            layer = Layer(size=self.size)
         if self.scale:
             (layer.scale_x, layer.scale_y), (layer.width, layer.height) = self.scale
-        self.layer.append(layer)
+        if sibling:
+            self.layer.insert(self.layer.index(sibling)+1, layer)
+            layer.above_sibling(sibling)
+        else:
+            self.layer.append(layer)
         return len(self.layer) - 1
+
+    def destroy_layer(self, layer):
+        """
+        Destroy the given layer
+        """
+        if isinstance(layer, (int, long)):
+            layer = self.layer[layer]
+        layer._candy_layer_status = 2
 
     def hide(self):
         """
@@ -213,11 +227,15 @@ class Stage(object):
                 tasks_reparent.append(('reparent', (widget._candy_id, None, None)))
         # sync all children
         tasks_update = []
-        for layer in self.layer:
-            if not layer.initialized:
+        for layer in self.layer[:]:
+            if layer._candy_layer_status == 0:
                 tasks.append(('reparent', (layer._candy_id, -1, None)))
-                layer.initialized = True
-            layer.__sync__(tasks_update)
+                layer._candy_layer_status = 1
+            if layer._candy_layer_status == 2:
+                tasks.append(('reparent', (layer._candy_id, None, None)))
+                self.layer.remove(layer)
+            else:
+                layer.__sync__(tasks_update)
         # Now the tricky part. All create, update and move functions
         # are called in the clutter thread at the backend. If it takes
         # too long, running animations may look strange. But for new
