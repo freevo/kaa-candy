@@ -29,7 +29,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Video' ]
+__all__ = [ 'Video', 'Audio' ]
 
 from gi.repository import Clutter as clutter
 
@@ -47,8 +47,8 @@ player = {
 
 class Video(group.Group):
 
-    player_obj = None
-    old_player = None
+    player_widget = None
+    unref_obj = None
 
     attributes = [ 'width', 'height', 'uri', 'config', 'audio_only', 'player' ]
 
@@ -61,25 +61,24 @@ class Video(group.Group):
         Prepare rendering
         """
         if 'player' in modified and self.player:
-            if self.player_obj:
-                self.old_player = self.player_obj.obj
-            self.player_obj = player[self.player]()
-            self.player_obj.x = self.player_obj.y = 0
-            self.player_obj.wid = self.wid
-            self.player_obj.server = self.server
+            if self.player_widget:
+                self.unref_obj = self.player_widget.obj
+            self.player_widget = player[self.player]()
+            self.player_widget.x = self.player_widget.y = 0
+            self.player_widget.wid = self.wid
+            self.player_widget.server = self.server
         for a in self.attributes:
-            setattr(self.player_obj, a, getattr(self, a))
-        self.player_obj.prepare(modified)
+            setattr(self.player_widget, a, getattr(self, a))
+        self.player_widget.prepare(modified)
 
     def update(self, modified):
         """
         Render the widget
         """
         super(Video, self).update(modified)
-        if self.old_player:
-            print 'del old'
-            self.obj.remove_actor(self.old_player)
-            self.old_player = None
+        if self.unref_obj:
+            self.obj.remove_actor(self.unref_obj)
+            self.unref_obj = None
         if 'width' in modified or 'height' in modified:
             self.obj.set_clip(0, 0, self.width, self.height)
         if 'uri' in modified and self.uri:
@@ -98,13 +97,19 @@ class Video(group.Group):
                     self.streaminfo['subtitle'][sub.id] = None if sub.langcode == 'und' else sub.langcode
             self.send_widget_event('streaminfo', self.streaminfo)
         if 'player' in modified and self.player:
-            self.player_obj.create()
-            self.obj.add_actor(self.player_obj.obj)
-            self.player_obj.update(modified)
+            self.player_widget.create()
+            self.obj.add_actor(self.player_widget.obj)
+        if self.player_widget:
+            self.player_widget.update(modified)
 
     #
     # control callbacks from the main process
     #
 
     def __getattr__(self, attr):
-        return getattr(self.player_obj, attr)
+        return getattr(self.player_widget, attr)
+
+
+class Audio(Video):
+
+    attributes = Video.attributes + [ 'visualisation' ]

@@ -275,6 +275,7 @@ class Audio(Video):
     Hidden video widget for audio only
     """
     candyxml_name = 'audio'
+    candy_backend = 'candy.Audio'
     audio_only = True
 
     attributes = Video.attributes + [ 'visualisation' ]
