@@ -94,6 +94,12 @@ class Mplayer(widget.Widget):
         self.obj = clutter.Texture()
         self.obj.hide()
 
+    def update(self, modified):
+        """
+        Render the widget
+        """
+        pass
+
     #
     # control callbacks from the main process
     #

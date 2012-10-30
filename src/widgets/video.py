@@ -66,11 +66,12 @@ class Video(Widget):
     Video widget
     """
     candyxml_name = 'video'
+    candy_backend = 'candy.Video'
 
-    attributes = [ 'uri', 'config', 'audio_only' ]
+    attributes = [ 'uri', 'config', 'audio_only', 'player' ]
     audio_only = False
 
-    __uri = None
+    __uri = __player = None
 
     def __init__(self, pos=None, size=None, uri=None, player='gstreamer', context=None):
         """
@@ -78,10 +79,6 @@ class Video(Widget):
         (default) and mplayer but only gstreamer can be used as real
         widget for now. When choosing mplayer it will always open a
         full screen window to play the video.
-
-        This it is not possible to set as argument the player when
-        using CandyXML without defining it in the XML file a special
-        variable 'candy_player' in the context can be used.
 
         The playback can be configured using the config member
         dictionary. Please note, that gstreamer tries to figure out
@@ -99,9 +96,6 @@ class Video(Widget):
             'mplayer.vdpau': False,
             'mplayer.passthrough': False,
         }
-        if not player:
-            player = self.context.get('candy_player')
-        self.set_player(player)
         # current streaminfo / audio / subtitle values
         self.streaminfo = {
             'audio': {},
@@ -111,6 +105,19 @@ class Video(Widget):
         self.aid = 0
         self.sid = -1
         self.aspect = ASPECT_ORIGINAL
+        self.player = player or 'gstreamer'
+
+    @property
+    def player(self):
+        return self.__player
+
+    @player.setter
+    def player(self, value):
+        if self.state != STATE_IDLE:
+            raise RuntimeError('player already running')
+        if value not in ('gstreamer', 'mplayer'):
+            raise RuntimeError('unknown player %s' % value)
+        self.__player = value
 
     @property
     def uri(self):
@@ -136,20 +143,6 @@ class Video(Widget):
     #
     # public API to control the player
     #
-
-    def set_player(self, player):
-        """
-        Set the player. This can be done until the widget is bound to
-        a stage by adding it to a parent.
-        """
-        if self.stage:
-            raise RuntimeError('backend widget already created')
-        if player == 'gstreamer' or player == None:
-            self.candy_backend = 'candy.Gstreamer'
-        elif player == 'mplayer':
-            self.candy_backend = 'candy.Mplayer'
-        else:
-            raise AttributeError('unsuported player %s' % player)
 
     def play(self):
         """
@@ -286,7 +279,7 @@ class Audio(Video):
 
     attributes = Video.attributes + [ 'visualisation' ]
 
-    def __init__(self, pos=None, size=None, uri=None, player='gstreamer', visualisation=None, 
+    def __init__(self, pos=None, size=None, uri=None, player='gstreamer', visualisation=None,
                  context=None):
         """
         Create the audio widget. If visualisation is None it is invisible.

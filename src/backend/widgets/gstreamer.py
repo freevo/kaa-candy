@@ -101,8 +101,11 @@ class Gstreamer(widget.Widget):
         """
         Render the widget
         """
-        super(Gstreamer, self).update(modified)
-        if 'width' in modified or 'height' in modified or 'x' in modified or 'y' in modified:
+        if 'width' in modified or 'height' in modified:
+            if 'width' in modified and self.width:
+                self.obj.set_width(self.width)
+            if 'height' in modified and self.height:
+                self.obj.set_height(self.height)
             self.calculate_geometry()
         if 'uri' in modified and self.uri:
             self.obj.set_uri(self.uri)
@@ -113,7 +116,7 @@ class Gstreamer(widget.Widget):
                 'sync': True
             }
             metadata = kaa.metadata.parse(self.uri)
-            if 'audio' in metadata:
+            if metadata and 'audio' in metadata:
                 # video item, not audio only
                 for audio in metadata.audio:
                     streaminfo['audio'][audio.id] = None if audio.langcode == 'und' else audio.langcode
