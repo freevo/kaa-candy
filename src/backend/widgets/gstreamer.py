@@ -47,6 +47,10 @@ from gi.repository import Clutter as clutter, ClutterGst, Gst as gst
 import kaa.metadata
 import widget
 
+# list of available visualisation plugins
+# (filled with content later)
+factory_visualisation = {}
+
 def requires_state(*states):
     """
     Small internal state maschine for gstreamer calls from the
@@ -94,6 +98,15 @@ class Gstreamer(widget.Widget):
                 pipeline = self.obj.get_pipeline()
                 flags = pipeline.get_property('flags')
                 pipeline.set_property('flags', flags | 0x00000008)
+
+                # The following lines would set the visualisation
+                # element. But doing so will crash the player with
+                # reference problems. This seems to be a problem with
+                # the gst bindings.
+
+                # factory = factory_visualisation['Synaescope']
+                # plugin = gst.ElementFactory.create(factory, None)
+                # pipeline.set_property('vis-plugin', plugin)
             else:
                 self.obj.hide()
 
@@ -279,3 +292,15 @@ class Gstreamer(widget.Widget):
 
 # initialize gstreamer
 ClutterGst.init(sys.argv)
+
+def parse_registry(element, data):
+    """
+    Callback for registry parsing
+    """
+    if hasattr(element, 'get_klass') and element.get_klass() == 'Visualization':
+        factory_visualisation[element.get_longname()] = element
+        return True
+    return False
+
+# parse the registry
+gst.Registry.feature_filter(gst.Registry.get_default(), parse_registry, False, None)
