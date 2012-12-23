@@ -118,8 +118,6 @@ class Video(Widget):
     def player(self, value):
         if self.state != STATE_IDLE:
             raise RuntimeError('player already running')
-        if value not in POSSIBLE_PLAYER:
-            raise RuntimeError('unknown player %s' % value)
         self.__player = value
 
     @property
@@ -153,6 +151,8 @@ class Video(Widget):
         """
         if self.state != STATE_IDLE:
             raise RuntimeError('player already running')
+        if self.player not in POSSIBLE_PLAYER:
+            raise RuntimeError('unknown player %s' % self.player)
         self.state = STATE_PLAYING
         self.backend.do_play()
 
