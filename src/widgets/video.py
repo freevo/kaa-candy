@@ -29,7 +29,7 @@
 # -----------------------------------------------------------------------------
 
 __all__ = [ 'Video', 'Audio', 'SEEK_RELATIVE', 'SEEK_ABSOLUTE', 'SEEK_PERCENTAGE',
-            'STATE_IDLE', 'STATE_PLAYING', 'STATE_PAUSED', 'NEXT' ]
+            'STATE_IDLE', 'STATE_PLAYING', 'STATE_PAUSED', 'NEXT', 'POSSIBLE_PLAYER' ]
 
 # python imports
 import logging
@@ -60,6 +60,9 @@ ASPECT_ZOOM = 'ASPECT_ZOOM'
 ASPECTS = [ ASPECT_ORIGINAL, ASPECT_16_9, ASPECT_4_3, ASPECT_ZOOM ]
 
 NEXT = 'NEXT'
+
+# filled with values from the backend later
+POSSIBLE_PLAYER = []
 
 class Video(Widget):
     """
@@ -115,7 +118,7 @@ class Video(Widget):
     def player(self, value):
         if self.state != STATE_IDLE:
             raise RuntimeError('player already running')
-        if value not in ('gstreamer', 'mplayer'):
+        if value not in POSSIBLE_PLAYER:
             raise RuntimeError('unknown player %s' % value)
         self.__player = value
 

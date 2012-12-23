@@ -82,7 +82,7 @@ class Mainloop(object):
         from gi.repository import Clutter as clutter
         clutter.main_quit()
 
-    def imp(self, name, path):
+    def imp(self, name, path, server):
         """
         Import inside the clutter thread
         """
@@ -92,6 +92,8 @@ class Mainloop(object):
         # hack to provide the module to other modules for import
         sys.modules[name] = imp.load_module(name, file, filename, data)
         globals()[name] = sys.modules[name]
+        if hasattr(sys.modules[name], 'init'):
+            sys.modules[name].init(server)
 
     def sync(self, queue, event):
         """
@@ -148,10 +150,7 @@ class Server(object):
         self.ipc.signals['client-connected'].connect(self.ipc_connected)
         self.ipc.register(self)
         self.widgets = {}
-        self.sync([
-                ('import', ('candy', os.path.dirname(__file__) + '/widgets')),
-                ('import', ('stage', os.path.dirname(__file__) + '/stage'))
-        ])
+        self.initialized = False
 
     def ipc_connected(self, client):
         """
@@ -175,6 +174,13 @@ class Server(object):
         """
         Sync callback from the candy application
         """
+        if not self.initialized:
+            self.initialized = True
+            self.sync([
+                    ('import', ('candy', os.path.dirname(__file__) + '/widgets')),
+                    ('import', ('player', os.path.dirname(__file__) + '/player')),
+                    ('import', ('stage', os.path.dirname(__file__) + '/stage')),
+            ])
         queue = []
         for cmd, args in tasks:
             if cmd == 'freeze':
@@ -206,7 +212,7 @@ class Server(object):
         """
         command for sync: import the module with path as name
         """
-        return mainloop.imp, (name, path)
+        return mainloop.imp, (name, path, self)
 
     def cmd_add(self, cls, wid):
         """

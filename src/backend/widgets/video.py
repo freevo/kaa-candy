@@ -29,7 +29,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Video', 'Audio' ]
+__all__ = [ 'player', 'Video', 'Audio' ]
 
 from gi.repository import Clutter as clutter
 
@@ -37,13 +37,7 @@ import kaa.metadata
 
 import group
 
-import gstreamer
-import mplayer
-
-player = {
-    'gstreamer': gstreamer.Gstreamer,
-    'mplayer': mplayer.Mplayer
-}
+player = {}
 
 class Video(group.Group):
 

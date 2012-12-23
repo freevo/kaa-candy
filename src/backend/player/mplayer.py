@@ -37,8 +37,6 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Mplayer' ]
-
 # Python imports
 import os
 import sys
@@ -46,12 +44,13 @@ import re
 import subprocess
 
 # Clutter GI bindings
-from gi.repository import Clutter as clutter
+from gi.repository import Clutter as clutter, ClutterX11
 
 # kaa.display for mplayer to draw to
 import kaa.display
 
-import widget
+# kaa.candy backend code
+import candy
 
 # mplayer progress status line parser
 RE_STATUS = re.compile(r'(?:V:\s*([\d.]+)|A:\s*([\d.]+)\s\W)(?:.*\s([\d.]+x))?')
@@ -79,7 +78,7 @@ SEEK_RELATIVE = 'SEEK_RELATIVE'
 SEEK_ABSOLUTE = 'SEEK_ABSOLUTE'
 SEEK_PERCENTAGE = 'SEEK_PERCENTAGE'
 
-class Mplayer(widget.Widget):
+class Player(candy.Widget):
     """
     Mplayer video widget.
     """
@@ -91,8 +90,8 @@ class Mplayer(widget.Widget):
         Create the clutter object
         """
         self.cmd = ArgumentList('mplayer')
-        self.obj = clutter.Texture()
-        self.obj.hide()
+        self.obj = ClutterX11.TexturePixmap()
+        # self.obj.hide()
 
     def update(self, modified):
         """
@@ -111,7 +110,8 @@ class Mplayer(widget.Widget):
         """
         try:
             self.window = kaa.display.X11Window(size=(self.width,self.height))
-            self.window.set_fullscreen()
+            self.window.draw_rectangle((0,0), (self.width,self.height), '#000000')
+            # self.window.set_fullscreen()
             self.window.set_cursor_visible(False)
             self.window.signals['key_press_event'].connect_weak(self.event_key)
             self.window.is_hidden = True
@@ -153,6 +153,7 @@ class Mplayer(widget.Widget):
             # starts
             self.window.lower()
             self.window.show()
+            self.window.lower()
             self.child.start()
         except Exception, e:
             # We should use the logging module somehow and get the
@@ -238,6 +239,11 @@ class Mplayer(widget.Widget):
         """
         self.server.send_event('key_press', key)
 
+    @kaa.threaded(kaa.GOBJECT)
+    def hook(self):
+        self.obj.set_window(self.window.id, True)
+        self.obj.set_automatic(True)
+
     def event_stdout(self, line):
         """
         Stdout line from the running mplayer process
@@ -249,7 +255,9 @@ class Mplayer(widget.Widget):
                     # We just started. Disable the deinterlacer and
                     # show the window
                     self.do_set_deinterlace(False)
-                    self.window.raise_()
+                    # self.window.raise_()
+                    self.window.draw_rectangle((0,0), (self.width,self.height), '#000000')
+                    self.hook()
                     self.window.is_hidden = False
                 if self.streaminfo['sync']:
                     self.send_widget_event('streaminfo', self.streaminfo)

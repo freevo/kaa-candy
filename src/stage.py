@@ -41,7 +41,8 @@ import kaa
 import kaa.rpc
 
 # kaa.candy imports
-from widgets import Group, Widget
+from widgets import Group, Widget, POSSIBLE_PLAYER
+
 import candyxml
 
 # turn on internal debug
@@ -293,6 +294,14 @@ class Stage(object):
             widget = layer.get_widget_by_id(wid)
             if widget:
                 getattr(widget, 'event_%s' % func)(*args, **kwargs)
+
+    @kaa.rpc.expose()
+    def event_player(self, player):
+        """
+        Callback on init to list all possible player
+        """
+        for p in player:
+            POSSIBLE_PLAYER.append(p)
 
     def candyxml(self, data):
         """
