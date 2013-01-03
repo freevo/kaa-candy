@@ -30,9 +30,15 @@
 
 __all__ = [ 'XMLdict', 'Widget' ]
 
+# Python imports
+import os
+import sys
+
+# kaa imports
 import kaa
 import kaa.weakref
 
+# kaa.candy imports
 from .. import candyxml
 from ..core import Context
 from ..template import Template
@@ -90,6 +96,8 @@ class Widget(object):
     _candy_sync_new = []
     _candy_sync_delete = []
     _candy_sync_reparent = []
+    _candy_import = []
+    _candy_backends = {}
 
     # internal object variables
     _candy_id = None
@@ -103,6 +111,14 @@ class Widget(object):
             if 'candyxml_name' in attrs.keys() or 'candyxml_style' in attrs.keys() \
                     or 'candyxml_override' in attrs.keys():
                 candyxml.register(cls)
+            backend = cls.candy_backend.split('.')[0]
+            if backend != 'candy':
+                path = os.path.dirname(sys.modules[cls.__module__].__file__) + '/' + backend
+                if not path in cls._candy_backends:
+                    dyn = 'dyn%03d' % len(cls._candy_backends.keys())
+                    cls._candy_backends[path] = dyn
+                    cls._candy_import.append((dyn, path))
+                cls.candy_backend = cls._candy_backends[path] + cls.candy_backend[len(backend):]
             return cls
 
     #: template for object creation
@@ -312,7 +328,7 @@ class Widget(object):
         Move the widget above the given sibling
         """
         self.backend.above_sibling('candy:widget:%s' % sibling._candy_id)
-        
+
     def unparent(self):
         """
         Unparent the widget. Calls widget.parent = None

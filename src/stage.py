@@ -195,6 +195,9 @@ class Stage(object):
             pass
         self._candy_dirty = False
         tasks = []
+        # check for new imports
+        while Widget._candy_import:
+            tasks.append(('import', Widget._candy_import.pop()))
         # prepare all widgets for the sync
         for layer in self.layer:
             layer.sync_prepare()
