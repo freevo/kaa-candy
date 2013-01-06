@@ -35,8 +35,6 @@
 #
 # -----------------------------------------------------------------------------
 
-__player__ = 'Gstreamer'
-
 # Python imports
 import os
 import sys
@@ -45,7 +43,7 @@ import sys
 from gi.repository import Clutter as clutter, ClutterGst, Gst as gst
 
 import kaa.metadata
-import widget
+import candy
 
 # list of available visualisation plugins
 # (filled with content later)
@@ -73,7 +71,7 @@ ASPECT_16_9 = 'ASPECT_16_9'
 ASPECT_4_3 = 'ASPECT_4_3'
 ASPECT_ZOOM = 'ASPECT_ZOOM'
 
-class Gstreamer(widget.Widget):
+class Player(candy.Widget):
     """
     Gstreamer video widget.
     """
