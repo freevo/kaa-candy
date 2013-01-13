@@ -264,6 +264,13 @@ class Server(object):
         """
         return self.widgets.pop(wid).delete, ()
 
+    def cmd_active(self, state):
+        """
+        command for sync: set state (in)active
+        """
+        return self.widgets[-1].set_active, (state,)
+
+
 #
 # Set up logging module
 #

@@ -52,7 +52,7 @@ class Layer(Group):
     """
     Group on the stage as parent for widgets added to the stage.
     """
-    
+
     _candy_layer_status = 0     # 0 new, 1 active, 2 destroyed
 
     def __init__(self, size, widgets=[], context=None):
@@ -70,6 +70,8 @@ class Stage(object):
       - key-press: sends a key pressed in the window. The signal is emited in
            the kaa mainloop.
     """
+
+    active = True
 
     def __init__(self, size, name, logfile=''):
         self.signals = kaa.Signals('key-press')
@@ -104,6 +106,7 @@ class Stage(object):
         self.initialized = False
         self.scale = None
         self.commands = []
+        self.tasks = []
 
     def add_layer(self, layer=None, sibling=None):
         """
@@ -135,7 +138,7 @@ class Stage(object):
         """
         for layer in self.layer:
             self.queue_command(layer._candy_id, 'hide', ())
-        
+
     def show(self):
         """
         Show the clutter actors again after calling hide.
@@ -143,7 +146,7 @@ class Stage(object):
         for layer in self.layer:
             self.queue_command(layer._candy_id, 'show', ())
         self.queue_command(-1, 'ensure_redraw', ())
-        
+
     def add(self, *widgets, **kwargs):
         """
         Add the given widgets to the stage
@@ -168,6 +171,19 @@ class Stage(object):
             widget = layer.get_widget(name)
             if widget:
                 return widget
+
+    def set_active(self, state):
+        """
+        Set the Stage active or inactive. If inactive the stage is
+        faded out and keys are not handled anymore. Usefull when the
+        application is busy somehow.
+        """
+        if state != self.active:
+            self.ipc.rpc('sync', [('active', (state, ))])
+            self.active = state
+            if state and self.tasks:
+                # some queued tasks, rerun sync
+                os.write(self._render_pipe[1], '1')
 
     def queue_rendering(self):
         """
@@ -255,20 +271,21 @@ class Stage(object):
             if t[0] == 'update' and t[1][0] in new_widgets:
                 tasks.append(t)
                 tasks_update.remove(t)
-        tasks = tasks + [('freeze', None)] + tasks_reparent + tasks_update
+        self.tasks = self.tasks + tasks + [('freeze', None)] + tasks_reparent + tasks_update
         # add commands for the widgets
         while self.commands:
-            tasks.append(('call', self.commands.pop(0)))
+            self.tasks.append(('call', self.commands.pop(0)))
         while Widget._candy_sync_delete:
-            tasks.append(('delete', (Widget._candy_sync_delete.pop(0),)))
+            self.tasks.append(('delete', (Widget._candy_sync_delete.pop(0),)))
         # now send everything to the backend
-        if tasks:
+        if self.tasks and self.active:
             if DEBUG:
                 print 'sync'
-                for t in tasks:
+                for t in self.tasks:
                     print '', t
                 print
-            self.ipc.rpc('sync', tasks)
+            self.ipc.rpc('sync', self.tasks)
+            self.tasks = []
 
     def set_content_geometry(self, size):
         """
@@ -286,7 +303,8 @@ class Stage(object):
         """
         Callback from the backend on key press
         """
-        self.signals['key-press'].emit(key)
+        if self.active:
+            self.signals['key-press'].emit(key)
 
     @kaa.rpc.expose()
     def event_widget_call(self, wid, func, *args, **kwargs):

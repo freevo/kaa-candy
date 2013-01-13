@@ -47,6 +47,18 @@ class Stage(object):
                     self.keysyms[getattr(clutter, name)] = []
                 self.keysyms[getattr(clutter, name)].append(name[4:])
 
+    def set_active(self, state):
+        """
+        Set the stage active or inactive
+        """
+        # set_opacity does not work on the state
+        for child in self.obj.get_children():
+            child.save_easing_state()
+            child.set_easing_duration(200)
+            factor = 2.0 if state else 1/2.0
+            child.set_opacity(child.get_opacity() * factor)
+            child.restore_easing_state()
+
     def handle_key(self, stage, event):
         """
         Translate clutter keycode to name and emit signal in main loop. This
