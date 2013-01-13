@@ -32,15 +32,19 @@
 
 __all__ = []
 
+import logging
 import kaa.utils
 import candy
+
+# get logging object
+log = logging.getLogger('candy')
 
 for name, module in kaa.utils.get_plugins(location=__file__).items():
     if not hasattr(module, 'Player'):
         # This should never happen and is for developing inside
         # kaa.candy only. Still, we should use the logging module
         # somehow and get the logging info to the main process.
-        print 'disable player %s: %s' % (name, module)
+        log.error('disable player %s: %s' % (name, module))
         continue
     candy.player[name] = getattr(module, 'Player')
 

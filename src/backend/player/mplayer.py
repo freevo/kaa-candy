@@ -42,6 +42,7 @@ import os
 import sys
 import re
 import subprocess
+import logging
 
 # Clutter GI bindings
 from gi.repository import Clutter as clutter, ClutterX11
@@ -51,6 +52,9 @@ import kaa.display
 
 # kaa.candy backend code
 import candy
+
+# get logging object
+log = logging.getLogger('candy')
 
 # mplayer progress status line parser
 RE_STATUS = re.compile(r'(?:V:\s*([\d.]+)|A:\s*([\d.]+)\s\W)(?:.*\s([\d.]+x))?')
@@ -158,7 +162,7 @@ class Player(candy.Widget):
         except Exception, e:
             # We should use the logging module somehow and get the
             # logging info to the main process.
-            print 'mplayer:', e
+            log.exception('unable to start mplayer')
 
     @kaa.threaded(kaa.MAINTHREAD)
     def do_stop(self):

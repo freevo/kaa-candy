@@ -31,14 +31,18 @@
 
 __all__ = []
 
+import logging
 import kaa.utils
+
+# get logging object
+log = logging.getLogger('candy')
 
 for name, module in kaa.utils.get_plugins(location=__file__).items():
     if not hasattr(module, '__all__'):
         # This should never happen and is for developing inside
         # kaa.candy only. Still, we should use the logging module
         # somehow and get the logging info to the main process.
-        print 'kaa.candy.backend ImportError:', name, module
+        log.error('unable to import %s: %s' % (name, module))
         continue
     for widget in module.__all__:
         __all__.append(widget)

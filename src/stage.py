@@ -71,11 +71,11 @@ class Stage(object):
            the kaa mainloop.
     """
 
-    def __init__(self, size, name):
+    def __init__(self, size, name, logfile=''):
         self.signals = kaa.Signals('key-press')
         # spawn the backend process
         name = 'candy-backend-%s' % name
-        args = [ 'python', os.path.dirname(__file__) + '/backend/main.py', name ]
+        args = [ 'python', os.path.dirname(__file__) + '/backend/main.py', name, logfile ]
         self._candy_dirty = True
         self.server = subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr)
         retry = 50

@@ -38,15 +38,11 @@ import time
 import threading
 import imp
 import logging
+import logging.config
+import logging.handlers
 
 # get logging object
 log = logging.getLogger('candy')
-
-# set stdout logging
-formatter = logging.Formatter('%(levelname)s %(module)s(%(lineno)s): %(message)s')
-handler = logging.StreamHandler()
-handler.setFormatter(formatter)
-log.addHandler(handler)
 
 # import GObject from gi.repository before jumping into kaa to force
 # kaa.gobject to use the gi repository
@@ -120,7 +116,7 @@ class Mainloop(object):
                     # We should use the logging module somehow and get the
                     # logging info to the main process. Only print out the
                     # sync time if we cannot make 100fps.
-                    print 'kaa.candy warning: sync took %0.4f sec' % sync_time
+                    log.warning('sync took %0.4f sec' % sync_time)
                     # For further debug to detect what function /
                     # widget is slow taht it took way too long:
                     # print 'last call', func, args
@@ -134,7 +130,7 @@ class Mainloop(object):
             # We should use the logging module somehow and get the
             # logging info to the main process. Only print out the
             # sync time if we cannot make 100fps.
-            print 'kaa.candy warning: sync took %0.4f sec' % sync_time
+            log.warning('kaa.candy warning: sync took %0.4f sec' % sync_time)
         event.set()
         return False
 
@@ -163,6 +159,7 @@ class Server(object):
         """
         Callback when the main app disconnects from the backend
         """
+        log.info('client disconnected, shutdown candy subprocess')
         sys.exit(0)
 
     @kaa.threaded(kaa.MAINTHREAD)
@@ -266,6 +263,29 @@ class Server(object):
         """
         return self.widgets.pop(wid).delete, ()
 
+#
+# Set up logging module
+#
+logger = logging.getLogger()
+
+# remove handler, we want to set the look and avoid duplicate handlers
+for l in logger.handlers[:]:
+    logger.removeHandler(l)
+
+# set stdout logging
+formatter = logging.Formatter('%(levelname)s candy:%(module)s(%(lineno)s): %(message)s')
+handler = logging.StreamHandler()
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
+if sys.argv[2]:
+    formatter = logging.Formatter('%(asctime)s %(levelname)-8s [%(name)6s] %(filename)s %(lineno)s: %(message)s')
+    handler = logging.handlers.RotatingFileHandler(sys.argv[2], maxBytes=1000000, backupCount=2)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+# set log level
+logger.setLevel(logging.INFO)
 
 kaa.main.init('generic')
 kaa.gobject_set_threaded(mainloop)

@@ -87,7 +87,6 @@ class Widget(object):
         if parent and sibling and sibling.obj.get_parent():
             parent.obj.insert_child_above(self.obj, sibling.obj)
         elif parent and sibling:
-            print 'oops', sibling.wid
             parent.obj.add_actor(self.obj)
         elif parent:
             parent.obj.add_actor(self.obj)
