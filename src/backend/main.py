@@ -74,6 +74,7 @@ class Mainloop(object):
             return
 
     def quit(self):
+        log.info('shutdown clutter mainloop')
         # Import clutter only in the gobject thread
         from gi.repository import Clutter as clutter
         clutter.main_quit()
@@ -287,7 +288,10 @@ if sys.argv[2]:
 # set log level
 logger.setLevel(logging.INFO)
 
-kaa.main.init('generic')
-kaa.gobject_set_threaded(mainloop)
-Server(sys.argv[1])
-kaa.main.run()
+try:
+    kaa.main.init('generic')
+    kaa.gobject_set_threaded(mainloop)
+    Server(sys.argv[1])
+    kaa.main.run()
+except Exception, e:
+    log.exception('backend shutdown')
