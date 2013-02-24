@@ -51,8 +51,8 @@ if len(sys.argv) == 2 and sys.argv[1] == 'clean':
 # now trigger the python magic
 setup(
     module = 'candy',
-    version = '0.0.1',
-    license = 'LGPL',
+    version = '0.0.2',
+    license = 'GPL',
     summary = 'Fourth generation Canvas System using Clutter as backend',
     namespace_packages = ['kaa']
 )
