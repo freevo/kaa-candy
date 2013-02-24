@@ -45,6 +45,9 @@ from widgets import Group, Widget, POSSIBLE_PLAYER
 
 import candyxml
 
+# available refresh rates
+REFRESH_RATES = []
+
 # turn on internal debug
 DEBUG = False
 
@@ -75,6 +78,7 @@ class Stage(object):
 
     def __init__(self, size, name, logfile=''):
         self.signals = kaa.Signals('key-press')
+        self.available_rates = []
         # spawn the backend process
         name = 'candy-backend-%s' % name
         args = [ 'python', os.path.dirname(__file__) + '/backend/main.py', name, logfile ]
@@ -323,6 +327,14 @@ class Stage(object):
         """
         for p in player:
             POSSIBLE_PLAYER.append(p)
+
+    @kaa.rpc.expose()
+    def event_available_rates(self, available_rates):
+        """
+        Callback on init to list all available refresh rates
+        """
+        for a in available_rates:
+            REFRESH_RATES.append(a)
 
     def candyxml(self, data):
         """

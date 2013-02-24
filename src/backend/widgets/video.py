@@ -35,6 +35,7 @@ from gi.repository import Clutter as clutter
 
 import kaa.metadata
 
+import x11
 import group
 
 player = {}
@@ -90,6 +91,9 @@ class Video(group.Group):
                 for sub in metadata.subtitles:
                     self.streaminfo['subtitle'][sub.id] = None if sub.langcode == 'und' else sub.langcode
             self.send_widget_event('streaminfo', self.streaminfo)
+            if self.config and self.config.get('refresh-rate', None):
+                if self.config['refresh-rate'] != x11.xrandr.rate:
+                    x11.xrandr.rate = self.config['refresh-rate']
         if 'player' in modified and self.player:
             self.player_widget.create()
             self.obj.add_actor(self.player_widget.obj)

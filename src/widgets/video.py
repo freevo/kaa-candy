@@ -36,6 +36,7 @@ import logging
 
 # kaa imports
 import kaa
+import kaa.metadata
 
 # kaa.candy imports
 from widget import Widget
@@ -74,7 +75,7 @@ class Video(Widget):
     attributes = [ 'uri', 'config', 'audio_only', 'player' ]
     audio_only = False
 
-    __uri = __player = None
+    __player = None
 
     def __init__(self, pos=None, size=None, uri=None, player='gstreamer', context=None):
         """
@@ -98,6 +99,7 @@ class Video(Widget):
         self.config = {
             'mplayer.vdpau': False,
             'mplayer.passthrough': False,
+            'fresh-rate': None
         }
         # current streaminfo / audio / subtitle values
         self.streaminfo = {
@@ -131,6 +133,10 @@ class Video(Widget):
             value = self.context.get(value) or ''
         if value and not value.find('://') > 0:
             value = 'file://' + value
+        if value:
+            self.metadata = kaa.metadata.parse(value)
+        else:
+            self.metadata = None
         self.__uri = value
 
     @classmethod

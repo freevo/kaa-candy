@@ -36,6 +36,8 @@ import logging
 import kaa.utils
 import candy
 
+import x11
+
 # get logging object
 log = logging.getLogger('candy')
 
@@ -53,3 +55,4 @@ def init(server):
     Called after import
     """
     server.send_event('player', candy.player.keys())
+    server.send_event('available_rates', x11.xrandr.available_rates)
