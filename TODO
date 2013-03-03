@@ -1,12 +1,10 @@
-1. Improve image loading
+1. Port clutter-reflect to current clutter API
 
-2. Port clutter-reflect to current clutter API
-
-3. Port the required code to open a window for kaa.display and add it
+2. Port the required code to open a window for kaa.display and add it
    to x11.py. This removed one dependency and we only need a small
    part of kaa.display.
 
-4. Fix DVD playback. Maybe use vlc for that.
+3. Fix DVD playback. Maybe use vlc for that.
 
 X. All FIXME, TODO and @todo messages in the code should be fixed. And add
    more doc (always a good idea)

@@ -32,7 +32,6 @@
 __all__ = [ 'CairoTexture', 'ImageTexture' ]
 
 import os
-import kaa.imlib2
 
 import cairo
 from gi.repository import Clutter as clutter
@@ -97,12 +96,11 @@ class ImageTexture(widget.Widget):
         super(ImageTexture, self).update(modified)
         if 'sync_data' in modified and self.sync_data:
             filename, delete = self.sync_data
-            # FIXME: the prepare function should always load the cogl
-            # texture in the main thread no avoid blocking this thread
-            # too long. But cogl.bitmap_new_from_file is not in the gi
-            # repository (yet). Loading the image using kaa.imlib2 and
-            # putting the raw data on the texture here is actually
-            # slower sometimes.
+            # TODO: the prepare function should always load the cogl
+            # texture in the main thread to avoid blocking the clutter
+            # thread. Loading the image here using kaa.imlib2 and
+            # putting the raw data on the texture is actually slower
+            # sometimes.
             if self.load_async:
                 self.obj.set_load_async(True)
             self.obj.set_from_file(filename)

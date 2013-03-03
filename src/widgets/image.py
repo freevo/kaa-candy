@@ -3,7 +3,7 @@
 # image.py - image widget based on kaa.imlib2
 # -----------------------------------------------------------------------------
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
-# Copyright (C) 2011 Dirk Meyer
+# Copyright (C) 2011-2013 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
@@ -28,7 +28,7 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'resolve_image_url', 'Image' ]
+__all__ = [ 'Image' ]
 
 # python imports
 import os
@@ -49,18 +49,6 @@ from .. import config
 # get logging object
 log = logging.getLogger('kaa.candy')
 
-def resolve_image_url(name):
-    """
-    Helper function to get the full path of the image.
-    @param name: image filename without path
-    """
-    for path in config.imagepath:
-        filename = os.path.join(path, name)
-        if os.path.isfile(filename):
-            return filename
-    return None
-
-
 class Image(Widget):
     """
     Image widget
@@ -76,12 +64,12 @@ class Image(Widget):
     load_async = False
 
     # class variable with a dict of images currently loading
-    __current_downloads = {}
+    __downloads = {}
 
     __filename = None
     __image = None
 
-    class Info(object):
+    class _Info(object):
         def __init__(self, data, width, height):
             self.data = data
             self.width = width
@@ -149,20 +137,30 @@ class Image(Widget):
         self.modified = False
         return True
 
+    def search(self, name):
+        """
+        Helper function to get the full path of the image.
+        """
+        for path in config.imagepath:
+            filename = os.path.join(path, name)
+            if os.path.isfile(filename):
+                return filename
+        return None
+
     def get_cachefile(self, url):
         """
         Return the cache filename for the given url
         """
         base = hashlib.md5(url).hexdigest() + os.path.splitext(url)[1]
         return kaa.tempfile('candy-images/' + base)
-        
-    def on_download_complete(self, status, cachefile):
+
+    def _download_complete(self, status, cachefile):
         """
         Callback for HTTP GET result. The image should be in the
         cachefile.
         """
-        if cachefile in self.__current_downloads:
-            del self.__current_downloads[cachefile]
+        if cachefile in self.__downloads:
+            del self.__downloads[cachefile]
         self.image = cachefile
 
     @property
@@ -184,7 +182,7 @@ class Image(Widget):
             image = self.context.get(image) or ''
         if isinstance(image, kaa.imlib2.Image):
             # provided image is an imlib2 image object
-            self.__image = Image.Info(image, image.width, image.height)
+            self.__image = Image._Info(image, image.width, image.height)
             self.modified = True
             return
         if image and image.startswith('http://'):
@@ -198,17 +196,17 @@ class Image(Widget):
                 # FIXME: use one thread (jobserver) for all downloads
                 #  or at least a max number of threads to make the individual
                 #  image loading faster
-                if not cachefile in self.__current_downloads:
+                if not cachefile in self.__downloads:
                     tmpfile = cachefile + '.tmp'
                     c = kaa.net.url.fetch(image, cachefile, tmpfile)
-                    self.__current_downloads[cachefile] = c
-                self.__current_downloads[cachefile].connect_weak_once(self.on_download_complete, cachefile)
+                    self.__downloads[cachefile] = c
+                self.__downloads[cachefile].connect_weak_once(self._download_complete, cachefile)
                 image = None
             else:
                 image = cachefile
         if image and not image.startswith('/'):
             # try to locate the image in our image path
-            image = resolve_image_url(image)
+            image = self.search(image)
         if self.__filename == image:
             # unchanged filename
             return
@@ -253,11 +251,12 @@ class Image(Widget):
                     fd.seek(seglen+4,1)
             if iheight > 0 and iwidth > 0:
                 # the backend can load the image itself
-                self.__image = Image.Info(image, iwidth, iheight)
+                self.__image = Image._Info(image, iwidth, iheight)
             else:
-                # load using imlib2
+                # load using imlib2; the backend may not be able to
+                # load the image itself
                 image = kaa.imlib2.Image(image)
-                self.__image = Image.Info(image, image.width, image.height)
+                self.__image = Image._Info(image, image.width, image.height)
         except Exception, e:
             log.error('unable to load %s', image)
             self.__image = None
@@ -265,7 +264,7 @@ class Image(Widget):
             try:
                 fd.close()
             except:
-                # open failed, so close will fail, too
+                # if open failed, close will also fail
                 pass
         self.modified = True
 

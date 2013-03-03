@@ -3,7 +3,7 @@
 # thumbnail.py - thumbnail widget for kaa.beacon thumbnail objects
 # -----------------------------------------------------------------------------
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
-# Copyright (C) 2011 Dirk Meyer
+# Copyright (C) 2011-2013 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
@@ -30,9 +30,12 @@
 
 __all__ = [ 'Thumbnail' ]
 
+# kaa imports
+import kaa.beacon
+
 # kaa.candy imports
 from widget import Widget
-from image import Image, resolve_image_url
+from image import Image
 
 class Thumbnail(Image):
     """
@@ -65,22 +68,20 @@ class Thumbnail(Image):
             # FIXME: make this dynamic
             thumbnail = self.context.get(thumbnail)
         item = None
-        if hasattr(thumbnail, 'scan'):
-            # FIXME: bad detection
-            # thumbnail is a kaa.beacon.Item
+        if isinstance(thumbnail, kaa.beacon.Item):
             item, thumbnail = thumbnail, thumbnail.get('thumbnail')
         self._thumbnail = thumbnail
         if default and not default.startswith('/'):
-            default = resolve_image_url(default)
+            default = self.search(default)
         if default:
             self.image = default
         if self._thumbnail is not None:
             # show thumbnail
-            self.on_thumbnail_ready(force=True)
+            self._beacon_thumbnail_ready(force=True)
         elif item is not None and not item.scanned:
             scanning = item.scan()
             if scanning:
-                scanning.connect_weak_once(self.on_beacon_update, item)
+                scanning.connect_weak_once(self._beacon_update, item)
 
     def sync_context(self):
         """
@@ -88,12 +89,12 @@ class Thumbnail(Image):
         """
         self.set_thumbnail(self.__thumbnail_provided, self.__default_provided)
 
-    def on_beacon_update(self, changes, item):
+    def _beacon_update(self, changes, item):
         self._thumbnail = item.get('thumbnail')
         if self._thumbnail is not None:
-            return self.on_thumbnail_ready(force=True)
+            return self._beacon_thumbnail_ready(force=True)
 
-    def on_thumbnail_ready(self, force=False):
+    def _beacon_thumbnail_ready(self, force=False):
         """
         Callback to render the thumbnail to the texture.
         @todo: add thumbnail update based on beacon mtime
@@ -112,7 +113,7 @@ class Thumbnail(Image):
             # to low. This is exactly what we want. The create will be
             # scheduled in the mainloop but since we do not wait it is ok.
             self._thumbnail.create(self._thumbnail.PRIORITY_HIGH).\
-                connect_weak_once(self.on_thumbnail_ready)
+                connect_weak_once(self._beacon_thumbnail_ready)
 
     @classmethod
     def candyxml_parse(cls, element):
