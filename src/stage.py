@@ -3,7 +3,7 @@
 # stage.py - Stage class as base for all widgets
 # -----------------------------------------------------------------------------
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
-# Copyright (C) 2011 Dirk Meyer
+# Copyright (C) 2011-2013 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
@@ -35,6 +35,7 @@ import sys
 import fcntl
 import subprocess
 import threading
+import logging
 
 # kaa imports
 import kaa
@@ -44,6 +45,9 @@ import kaa.rpc
 from widgets import Group, Widget, POSSIBLE_PLAYER
 
 import candyxml
+
+# get logging object
+log = logging.getLogger('kaa.candy')
 
 # available refresh rates
 REFRESH_RATES = []
@@ -56,47 +60,57 @@ class Layer(Group):
     Group on the stage as parent for widgets added to the stage.
     """
 
-    _candy_layer_status = 0     # 0 new, 1 active, 2 destroyed
+    STATUS_NEW = 'STATUS_NEW'
+    STATUS_ACTIVE = 'STATUS_ACTIVE'
+    STATUS_DESTROYED = 'STATUS_DESTROYED'
+
+    _state = STATUS_NEW
 
     def __init__(self, size, widgets=[], context=None):
         super(Layer, self).__init__(size=size, widgets=widgets, context=context)
+
+    def __reset__(self):
+        """
+        Internal function when the candy backend becomes invalid and
+        needs to be restarted.
+        """
+        super(Layer, self).__reset__()
+        self._state = Layer.STATUS_NEW
+        Widget._candy_sync_reparent.remove(self)
 
     @property
     def parent(self):
         return self.stage
 
-class Stage(object):
+
+class Stage(kaa.Object):
     """
     The stage class is the visible window
-
-    @ivar signals: kaa.Signal dictionary for the object
-      - key-press: sends a key pressed in the window. The signal is emited in
-           the kaa mainloop.
     """
+
+    BACKEND_DOWN = 'BACKEND_DOWN'
+    BACKEND_INITIALIZING = 'BACKEND_INITIALIZING'
+    BACKEND_RUNNING = 'BACKEND_RUNNING'
+
+    __kaasignals__ = {
+        'key-press':
+            '''
+            Emitted when a key in the window is pressed
+            '''
+    }
 
     active = True
 
     def __init__(self, size, name, logfile=''):
-        self.signals = kaa.Signals('key-press')
+        super(Stage, self).__init__()
         self.available_rates = []
-        # spawn the backend process
-        name = 'candy-backend-%s' % name
-        args = [ 'python', os.path.dirname(__file__) + '/backend/main.py', name, logfile ]
-        self._candy_dirty = True
-        self.server = subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr)
-        retry = 50
-        while True:
-            try:
-                self.ipc = kaa.rpc.connect(name)
-                kaa.inprogress(self.ipc).wait()
-                break
-            except Exception, e:
-                retry -= 1
-                if retry == 0:
-                    raise e
-                time.sleep(0.1)
-        self.ipc.register(self)
+        self.name = 'candy-backend-%s' % name
+        self.logfile = logfile
         self.size = size
+        self.scale = None
+        self.backend_state = Stage.BACKEND_DOWN
+        # import cache for restart
+        self._candy_restart_import = []
         # create the base widget
         self.layer = [ Layer(size=size) ]
         # We need the render pipe, the 'step' signal is not enough. It
@@ -107,10 +121,63 @@ class Stage(object):
         fcntl.fcntl(self._render_pipe[1], fcntl.F_SETFL, os.O_NONBLOCK)
         kaa.IOMonitor(self.__sync).register(self._render_pipe[0])
         os.write(self._render_pipe[1], '1')
-        self.initialized = False
-        self.scale = None
+        self._start_backend()
+
+    @kaa.coroutine()
+    def _start_backend(self):
+        # spawn the backend process
+        args = [ 'python', os.path.dirname(__file__) + '/backend/main.py', self.name, self.logfile ]
+        self._candy_dirty = True
+        self.server = subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr)
+        retry = 50
+        if os.path.exists(kaa.tempfile(self.name)):
+            os.unlink(kaa.tempfile(self.name))
+        while True:
+            try:
+                self.ipc = kaa.rpc.connect(self.name)
+                yield kaa.inprogress(self.ipc)
+                break
+            except Exception, e:
+                retry -= 1
+                if retry == 0:
+                    raise e
+                time.sleep(0.1)
+        self.ipc.signals['closed'].connect_weak_once(self._ipc_disconnect)
+        self.ipc.register(self)
+        self.backend_state = Stage.BACKEND_INITIALIZING
         self.commands = []
         self.tasks = []
+        os.write(self._render_pipe[1], '1')
+
+    def __reset__(self):
+        """
+        Reset the stage during disconnect
+        """
+        pass
+
+    @kaa.coroutine()
+    def _ipc_disconnect(self):
+        """
+        Callback when the backend disconnects (crash). This means we
+        need to restart it.
+        """
+        log.error('backend error, restarting')
+        self.backend_state = Stage.BACKEND_DOWN
+        self.ipc = None
+        self.__reset__()
+        # remove dead layer
+        for layer in self.layer[:]:
+            if layer._state == Layer.STATUS_DESTROYED:
+                self.layer.remove(layer)
+        # start the backend again
+        yield self._start_backend()
+        # reset widget status
+        Widget._candy_sync_new = []
+        Widget._candy_sync_reparent = []
+        Widget._candy_sync_delete = []
+        for widget in Widget._candy_all_widgets:
+            widget.__reset__()
+        self.__sync()
 
     def add_layer(self, layer=None, sibling=None):
         """
@@ -133,7 +200,7 @@ class Stage(object):
         """
         if isinstance(layer, (int, long)):
             layer = self.layer[layer]
-        layer._candy_layer_status = 2
+        layer._state = Layer.STATUS_DESTROYED
 
     def hide(self):
         """
@@ -213,11 +280,22 @@ class Stage(object):
             os.read(self._render_pipe[0], 1)
         except OSError:
             pass
+        if self.backend_state == Stage.BACKEND_DOWN:
+            return
         self._candy_dirty = False
         tasks = []
         # check for new imports
+        if self.backend_state == Stage.BACKEND_INITIALIZING:
+            for i in self._candy_restart_import:
+                tasks.append(('import', i))
         while Widget._candy_import:
-            tasks.append(('import', Widget._candy_import.pop()))
+            module = Widget._candy_import.pop()
+            self._candy_restart_import.append(module)
+            tasks.append(('import', module))
+        if tasks:
+            # make sure everything is imported before we need it
+            self.ipc.rpc('sync', tasks)
+            tasks = []
         # prepare all widgets for the sync
         for layer in self.layer:
             layer.sync_prepare()
@@ -235,8 +313,8 @@ class Stage(object):
             tasks.append(('add', (widget.candy_backend, widget._candy_id)))
             new_widgets.append(widget._candy_id)
         # create stage object if needed
-        if not self.initialized:
-            self.initialized = True
+        if self.backend_state == Stage.BACKEND_INITIALIZING:
+            self.backend_state = Stage.BACKEND_RUNNING
             tasks.append(('add', ('stage.Stage', -1)))
             tasks.append(('call', (-1, 'init', (self.size, ))))
         # Change parents for the widgets. Remember the needed calls in
@@ -252,10 +330,10 @@ class Stage(object):
         # sync all children
         tasks_update = []
         for layer in self.layer[:]:
-            if layer._candy_layer_status == 0:
+            if layer._state == Layer.STATUS_NEW:
                 tasks.append(('reparent', (layer._candy_id, -1, None)))
-                layer._candy_layer_status = 1
-            if layer._candy_layer_status == 2:
+                layer._state = Layer.STATUS_ACTIVE
+            if layer._state == Layer.STATUS_DESTROYED:
                 tasks.append(('reparent', (layer._candy_id, None, None)))
                 self.layer.remove(layer)
             else:
@@ -288,8 +366,12 @@ class Stage(object):
                 for t in self.tasks:
                     print '', t
                 print
-            self.ipc.rpc('sync', self.tasks)
-            self.tasks = []
+            try:
+                if self.ipc:
+                    self.ipc.rpc('sync', self.tasks)
+                self.tasks = []
+            except kaa.rpc.NotConnectedError, e:
+                self._ipc_disconnect()
 
     def set_content_geometry(self, size):
         """

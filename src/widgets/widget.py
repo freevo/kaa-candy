@@ -3,7 +3,7 @@
 # widget.py - base widget class
 # -----------------------------------------------------------------------------
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
-# Copyright (C) 2011 Dirk Meyer
+# Copyright (C) 2011-2013 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
@@ -33,6 +33,7 @@ __all__ = [ 'XMLdict', 'Widget' ]
 # Python imports
 import os
 import sys
+import logging
 
 # kaa imports
 import kaa
@@ -42,6 +43,10 @@ import kaa.weakref
 from .. import candyxml
 from ..core import Context
 from ..template import Template
+
+# get logging object
+log = logging.getLogger('kaa.candy')
+
 
 next_id = 1
 
@@ -98,6 +103,7 @@ class Widget(object):
     _candy_sync_reparent = []
     _candy_import = []
     _candy_backends = {}
+    _candy_all_widgets = []
 
     # internal object variables
     _candy_id = None
@@ -167,6 +173,8 @@ class Widget(object):
         self._candy_id = next_id
         next_id += 1
         self.backend = BackendWrapper(self._candy_id)
+        self.__weakref = kaa.weakref.weakref(self)
+        Widget._candy_all_widgets.append(self.__weakref)
         Widget._candy_sync_new.append(self)
         if pos is not None:
             self.x, self.y = pos
@@ -188,6 +196,7 @@ class Widget(object):
             # Python is shutting down, no need to clean anymore -- and
             # not possible.
             return
+        Widget._candy_all_widgets.remove(self.__weakref)
         Widget._candy_sync_delete.append(self._candy_id)
         if self.__stage and not self.__stage._candy_dirty:
             self.__stage.queue_rendering()
@@ -199,6 +208,19 @@ class Widget(object):
         if event in self._candy_events:
             return self._candy_events[event](*args) or True
         return False
+
+    def __reset__(self):
+        """
+        Internal function when the candy backend becomes invalid and
+        needs to be restarted.
+        """
+        if not self in Widget._candy_sync_new:
+            Widget._candy_sync_new.append(self)
+        if not self in Widget._candy_sync_reparent and self.parent:
+            Widget._candy_sync_reparent.append(self)
+        self._candy_dirty = True
+        self.__stage = None
+        self.__sync_cache = {}
 
     def __sync__(self, tasks):
         """
@@ -315,18 +337,26 @@ class Widget(object):
         """
         Raise widget to the top of the stack
         """
+        if self.parent and self in self.parent.children:
+            self.parent.children.remove(self)
+            self.parent.children.append(self)
         self.backend.raise_top()
 
     def lower_bottom(self):
         """
         Lower widget to the bottom of the stack
         """
+        if self.parent and self in self.parent.children:
+            self.parent.children.remove(self)
+            self.parent.children.insert(0, self)
         self.backend.lower_bottom()
 
     def above_sibling(self, sibling):
         """
         Move the widget above the given sibling
         """
+        if self.parent and self.sibling.parent and self in self.parent.children:
+            log.error('TODO: above_sibling not implemented for restart')
         self.backend.above_sibling('candy:widget:%s' % sibling._candy_id)
 
     def unparent(self):
@@ -451,7 +481,7 @@ class Widget(object):
         if self.__parent:
             self.__parent.children.remove(self)
         if parent:
-            self.__parent = kaa.weakref.weakref(parent)
+            self.__parent = parent.__weakref
             self.__parent.children.append(self)
         else:
             self.__parent = None
