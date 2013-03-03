@@ -33,17 +33,13 @@ __all__ = [ 'Text' ]
 import re
 import kaa.base
 
-# we need to import clutter here to calculate the size. The Clutter
-# mainloop is not started. If someone knows a better way to get the
-# intrinsic size, please change this. Trying to use pango together
-# with cairo showed different intrinsic size values.
-from gi.repository import Clutter as clutter
-from gi.repository import Pango as pango
-clutter.threads_init()
-clutter.init([])
+import cairo
+
+from gi.repository import Pango, PangoCairo
 
 from widget import Widget
-from ..core import Color, Font
+from ..core import Color, Font, create_cairo_context
+
 
 class Text(Widget):
     candyxml_name = 'text'
@@ -115,16 +111,18 @@ class Text(Widget):
         if self.__intrinsic_size_param == (width, height, self.text, self.font.name, self.font.size):
             self.intrinsic_size = self.__intrinsic_size_cache
             return self.__intrinsic_size_cache
-        obj = clutter.Text()
-        obj.set_size(width, height)
-        obj.set_line_wrap(True)
-        obj.set_line_wrap_mode(pango.WrapMode.WORD_CHAR)
-        obj.set_use_markup(True)
-        obj.set_font_name("%s %spx" % (self.font.name, self.font.size))
-        obj.set_text(self.text)
+        cr = create_cairo_context()
+        layout = PangoCairo.create_layout(cr)
+        layout.set_width(width * Pango.SCALE)
+        layout.set_height(height * Pango.SCALE)
+        layout.set_ellipsize(Pango.EllipsizeMode.END)
+        layout.set_wrap(Pango.WrapMode.WORD_CHAR)
+        layout.set_font_description(self.font.get_font_description())
+        layout.set_text(self.text, -1)
+        PangoCairo.show_layout(cr, layout)
         self.__intrinsic_size_cache = \
-            min(width, pango.units_to_double(obj.get_layout().get_size()[0])), \
-            min(height, pango.units_to_double(obj.get_layout().get_size()[1]))
+            int(min(width, Pango.units_to_double(layout.get_size()[0]))), \
+            int(min(height, Pango.units_to_double(layout.get_size()[1])))
         self.__intrinsic_size_param = (width, height, self.text, self.font.name, self.font.size)
         self.intrinsic_size = self.__intrinsic_size_cache
         return self.__intrinsic_size_cache

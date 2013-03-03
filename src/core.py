@@ -40,6 +40,8 @@ __all__ = [ 'Context', 'Color', 'Font' ]
 import logging
 import cairo
 
+from gi.repository import Pango
+
 # kaa imports
 import kaa
 
@@ -116,6 +118,13 @@ class Color(list):
 # helping cairo surface
 _font_cairo_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 10, 10)
 
+def create_cairo_context():
+    """
+    Create a dummy cairo context object for font calculations.
+    """
+    return cairo.Context(_font_cairo_surface)
+
+
 class Font(object):
     """
     Font object containing font name and font size
@@ -149,7 +158,7 @@ class Font(object):
             size = self.size
         info = self.__height_cache.get((self.name, size))
         if info is None:
-            c = cairo.Context(_font_cairo_surface)
+            c = create_cairo_context()
             c.select_font_face(self.name, cairo.FONT_SLANT_NORMAL)
             c.set_font_size(size)
             ascent, descent = c.font_extents()[:2]
@@ -163,7 +172,7 @@ class Font(object):
         """
         Get width of the given string
         """
-        c = cairo.Context(_font_cairo_surface)
+        c = create_cairo_context()
         c.select_font_face(self.name, cairo.FONT_SLANT_NORMAL)
         c.set_font_size(self.size)
         # add x_bearing to width (maybe use x_advance later)
@@ -186,3 +195,9 @@ class Font(object):
                 return f
             last = size
             size += 1
+
+    def get_font_description(self):
+        """
+        Get the Pango.FontDescription for the font object
+        """
+        return Pango.FontDescription.from_string("%s %spx" % (self.name, self.size))

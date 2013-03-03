@@ -4,12 +4,9 @@
 # -----------------------------------------------------------------------------
 # This file is imported by the backend process in the clutter
 # mainloop. Importing and using clutter is thread-safe.
-#
-# FIXME: port this to cairo + pango like label, maybe it will be
-# faster. As it is now, it is slow. Maybe draw cairo in another thread???
 # -----------------------------------------------------------------------------
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
-# Copyright (C) 2011-2012 Dirk Meyer
+# Copyright (C) 2011-2013 Dirk Meyer
 #
 # Based on various previous attempts to create a canvas system for
 # Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
@@ -33,31 +30,24 @@
 
 __all__ = [ 'Text' ]
 
-from gi.repository import Clutter as clutter
-from gi.repository import Pango as pango
+from gi.repository import Pango, PangoCairo
 
-import widget
+import image
 
-class Text(widget.Widget):
+class Text(image.CairoTexture):
 
-    def create(self):
+    def draw(self, cr):
         """
-        Create the clutter object
+        Render the cairo context
         """
-        self.obj = clutter.Text.new()
-        self.obj.show()
-
-    def update(self, modified):
-        """
-        Render the widget
-        """
-        super(Text, self).update(modified)
-        if 'align' in modified and self.align:
-            self.obj.set_line_alignment(getattr(pango.Alignment, str(self.align).upper()))
-        self.obj.set_line_wrap(True)
-        self.obj.set_line_wrap_mode(pango.WrapMode.WORD_CHAR)
-        self.obj.set_use_markup(True)
-        self.obj.set_font_name("%s %spx" % (self.font.name, self.font.size))
-        self.obj.set_color(clutter.Color.new(*self.color))
-        self.obj.set_ellipsize(pango.EllipsizeMode.END)
-        self.obj.set_text(self.text)
+        if self.color:
+            cr.set_source_rgba(*self.color.to_cairo())
+        layout = PangoCairo.create_layout(cr)
+        layout.set_width(self.width * Pango.SCALE)
+        layout.set_height(self.height * Pango.SCALE)
+        layout.set_ellipsize(Pango.EllipsizeMode.END)
+        layout.set_alignment(getattr(Pango.Alignment, str(self.align).upper()))
+        layout.set_wrap(Pango.WrapMode.WORD_CHAR)
+        layout.set_font_description(self.font.get_font_description())
+        layout.set_text(self.text, -1)
+        PangoCairo.show_layout(cr, layout)
