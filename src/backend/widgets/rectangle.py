@@ -10,7 +10,7 @@
 # reason. This should be fixed here in the future.
 # -----------------------------------------------------------------------------
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
-# Copyright (C) 2012 Dirk Meyer
+# Copyright (C) 2012-2013 Dirk Meyer
 #
 # Based on various previous attempts to create a canvas system for
 # Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
@@ -34,17 +34,15 @@
 
 __all__ = [ 'Rectangle' ]
 
-from gi.repository import Clutter as clutter
-
+# kaa.candy imports
 import image
 
 class Rectangle(image.CairoTexture):
 
-    def draw(self, texture, cr):
+    def draw(self, cr):
         """
-        Render the widget
+        Render the cairo context
         """
-        super(Rectangle, self).draw(texture, cr)
         stroke = self.border_size or 1
         width = self.width - 2 * stroke
         height = self.height - 2 * stroke

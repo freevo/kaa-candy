@@ -7,7 +7,7 @@
 #
 # -----------------------------------------------------------------------------
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
-# Copyright (C) 2011-2012 Dirk Meyer
+# Copyright (C) 2011-2013 Dirk Meyer
 #
 # Based on various previous attempts to create a canvas system for
 # Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
@@ -31,20 +31,19 @@
 
 __all__ = [ 'Label' ]
 
-import image
-
+# cairo imports
 import cairo
-from gi.repository import Clutter as clutter
 
+# kaa.candy imports
+import image
 import core
 
 class Label(image.CairoTexture):
-    
-    def draw(self, texture, cr):
+
+    def draw(self, cr):
         """
-        Render the widget
+        Render the cairo context
         """
-        super(Label, self).draw(texture, cr)
         fade = self.font.get_width(self.text) > self.width
         # draw new text string
         if self.color:
