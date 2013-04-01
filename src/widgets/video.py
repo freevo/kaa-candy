@@ -107,8 +107,6 @@ class Video(Widget):
             'subtitle': {},
             'is_menu': False,
         }
-        self.aid = 0
-        self.sid = -1
         self.aspect = ASPECT_ORIGINAL
         self.player = player or 'gstreamer'
 
@@ -196,41 +194,14 @@ class Video(Widget):
         """
         Set the audio channel to stream number idx
         """
-        if idx == NEXT:
-            if not self.streaminfo or not self.streaminfo['audio']:
-                return 0
-            aid = self.streaminfo['audio'].keys()
-            aid.sort()
-            if not self.aid in aid:
-                idx = 0
-            else:
-                idx = aid.index(self.aid) + 1
-                if idx >= len(aid):
-                    idx = 0
-            idx = aid[idx]
         self.backend.do_set_audio(idx)
-        self.aid = idx
         return idx
 
     def set_subtitle(self, idx):
         """
         Set the subtitle sream idx. Use -1 to turn subtitles off.
         """
-        if idx == NEXT:
-            if not self.streaminfo or not self.streaminfo['subtitle']:
-                return -1
-            sid = self.streaminfo['subtitle'].keys()
-            sid.sort()
-            if not self.sid in sid:
-                idx = sid[0]
-            else:
-                idx = sid.index(self.sid) + 1
-                if idx >= len(sid):
-                    idx = -1
-                else:
-                    idx = sid[idx]
         self.backend.do_set_subtitle(idx)
-        self.sid = idx
         return idx
 
     def set_deinterlace(self, value):

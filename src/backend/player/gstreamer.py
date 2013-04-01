@@ -211,7 +211,13 @@ class Player(candy.Widget):
         Set the audio stream
         """
         self.obj.set_audio_stream(idx)
+        # Seek nowhere. This is kind of stupid but clutter-gst does
+        # not resume playback unless you seek. This is a bug I have to
+        # check if it is fixed in the latest version and report it if
+        # not.
+        self.do_seek(0, SEEK_RELATIVE)
 
+    @requires_state(gst.State.PLAYING)
     def do_set_subtitle(self, idx):
         """
         Set the subtitle stream (-1 == none)
