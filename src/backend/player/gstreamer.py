@@ -126,13 +126,14 @@ class Player(candy.Widget):
                 'is_menu': False,
                 'sync': True
             }
-            metadata = kaa.metadata.parse(self.uri)
-            if metadata and 'audio' in metadata:
-                # video item, not audio only
-                for audio in metadata.audio:
-                    streaminfo['audio'][audio.id] = None if audio.langcode == 'und' else audio.langcode
-                for sub in metadata.subtitles:
-                    streaminfo['subtitle'][sub.id] = None if sub.langcode == 'und' else sub.langcode
+            if self.uri.startswith('file://'):
+                metadata = kaa.metadata.parse(self.uri)
+                if metadata and 'audio' in metadata:
+                    # video item, not audio only
+                    for audio in metadata.audio:
+                        streaminfo['audio'][audio.id] = None if audio.langcode == 'und' else audio.langcode
+                    for sub in metadata.subtitles:
+                        streaminfo['subtitle'][sub.id] = None if sub.langcode == 'und' else sub.langcode
             self.send_widget_event('streaminfo', streaminfo)
 
 
