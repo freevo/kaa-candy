@@ -298,7 +298,9 @@ logger.setLevel(logging.INFO)
 try:
     kaa.main.init('generic')
     kaa.gobject_set_threaded(mainloop)
-    Server(sys.argv[1])
+    # start server and keep its reference to avoid it being deleted by
+    # GC before the actual connect.
+    s = Server(sys.argv[1])
     kaa.main.run()
 except Exception, e:
     log.exception('backend shutdown')
