@@ -203,6 +203,10 @@ class Server(object):
             # FIXME: idle_add does not work when animations are
             # running. It seems to be that clutter uses as much CPU
             # time as possible, nothing is idle.
+            if kaa.get_thread_pool(kaa.GOBJECT) and kaa.get_thread_pool(kaa.GOBJECT).thread and \
+                    not kaa.get_thread_pool(kaa.GOBJECT).thread.is_alive():
+                log.error('gobject loop crashed')
+                sys.exit(1)
             gobject.timeout_add(0, mainloop.sync, queue, event)
             event.wait()
 
