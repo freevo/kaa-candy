@@ -109,6 +109,7 @@ class Stage(kaa.Object):
         self.size = size
         self.scale = None
         self.backend_state = Stage.BACKEND_DOWN
+        self.backend_time = 0
         # import cache for restart
         self._candy_restart_import = []
         # create the base widget
@@ -161,8 +162,12 @@ class Stage(kaa.Object):
         Callback when the backend disconnects (crash). This means we
         need to restart it.
         """
+        if time.time() - time.time() < 5:
+            log.error('two backend errors in 5 seconds, giving up')
+            sys.exit(1)
         log.error('backend error, restarting')
         self.backend_state = Stage.BACKEND_DOWN
+        self.backend_time = time.time()
         self.ipc = None
         self.__reset__()
         # remove dead layer
