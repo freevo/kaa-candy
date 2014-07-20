@@ -5,6 +5,9 @@
 # This file is imported by the backend process in the clutter
 # mainloop. Importing and using clutter is thread-safe.
 #
+# Note: THIS PLUGIN IS FOR GSTREAMER 0.10. See gstreamer2.py for the
+# vrsion working with gstreamer 1.0 and clutter-gst-2
+#
 # The widget does not use kaa.popcorn because gstreamer using
 # kaa.candy and mplayer are too different to add support to
 # kaa.popcorn without rewriting too much. Furthermore, kaa.popcorn
@@ -41,6 +44,9 @@ import sys
 
 # Clutter and GStreamer GI bindings
 from gi.repository import Clutter as clutter, ClutterGst, Gst as gst
+
+if ClutterGst.MAJOR_VERSION == 2:
+    raise RuntimeError('wrong version')
 
 import kaa.metadata
 import candy

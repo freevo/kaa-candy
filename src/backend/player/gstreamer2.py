@@ -5,9 +5,12 @@
 # This file is imported by the backend process in the clutter
 # mainloop. Importing and using clutter is thread-safe.
 #
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# THIS WIDGET DOES NOT WORK DUE TO REFERENCE PROBLEMS IN THE PIPELINE
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# The widget does not use kaa.popcorn because gstreamer using
+# kaa.candy and mplayer are too different to add support to
+# kaa.popcorn without rewriting too much. Furthermore, kaa.popcorn
+# seems to have a raise condition I cannot find and is too complex;
+# much is not needed.
+#
 # -----------------------------------------------------------------------------
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
 # Copyright (C) 2012 Dirk Meyer
@@ -32,16 +35,19 @@
 #
 # -----------------------------------------------------------------------------
 
-__all__ = [ 'Gstreamer2' ]
-
 # Python imports
 import os
 import sys
+import gi
 
 # Clutter and GStreamer GI bindings
 from gi.repository import Clutter as clutter, ClutterGst, Gst as gst, GObject as gobject
 
-import widget
+if ClutterGst.MAJOR_VERSION != 2:
+    raise RuntimeError('wrong version')
+
+import kaa.metadata
+import candy
 
 def requires_state(*states):
     """
@@ -60,13 +66,19 @@ SEEK_RELATIVE = 'SEEK_RELATIVE'
 SEEK_ABSOLUTE = 'SEEK_ABSOLUTE'
 SEEK_PERCENTAGE = 'SEEK_PERCENTAGE'
 
-class Gstreamer2(widget.Widget):
+ASPECT_ORIGINAL = 'ASPECT_ORIGINAL'
+ASPECT_16_9 = 'ASPECT_16_9'
+ASPECT_4_3 = 'ASPECT_4_3'
+ASPECT_ZOOM = 'ASPECT_ZOOM'
+
+class Player(candy.Widget):
     """
     Gstreamer video widget.
     """
 
     state = gst.State.NULL
-    pipeline = None
+    aspect = original_aspect = None
+    zoom = 1
 
     def create(self):
         """
@@ -80,9 +92,14 @@ class Gstreamer2(widget.Widget):
         """
         Render the widget
         """
-        super(Gstreamer2, self).update(modified)
-        if 'url' in modified and self.url:
-            self.pipeline = gst.ElementFactory.make('playbin2', 'pipeline')
+        if 'width' in modified or 'height' in modified:
+            if 'width' in modified and self.width:
+                self.obj.set_width(self.width)
+            if 'height' in modified and self.height:
+                self.obj.set_height(self.height)
+            self.calculate_geometry()
+        if 'uri' in modified and self.uri:
+            self.pipeline = gst.ElementFactory.make('playbin', 'pipeline')
             # There is a memory problem somehow. If we loose the sink
             # here gstreamer does not has a ref on its own and it
             # crashes. If we just keep the ref until the widget is
@@ -93,21 +110,43 @@ class Gstreamer2(widget.Widget):
             sink = gst.ElementFactory.make('cluttersink', 'video')
             sink.set_property('texture', self.obj)
             self.pipeline.set_property('video-sink', sink)
-            if self.url.endswith('/'):
-                self.url = self.url[:-1]
-            if self.url.find('://') == -1:
-                self.url = 'file://' + self.url
-            self.pipeline.set_property("uri", self.url)
+            if self.uri.endswith('/'):
+                self.uri = self.uri[:-1]
+            if self.uri.find('://') == -1:
+                self.uri = 'file://' + self.uri
+            self.pipeline.set_property("uri", self.uri)
+            streaminfo = {
+                'audio': {},
+                'subtitle': {},
+                'is_menu': False,
+                'sync': True
+            }
+            if self.uri.startswith('file://'):
+                metadata = kaa.metadata.parse(self.uri)
+                if metadata and 'audio' in metadata:
+                    # video item, not audio only
+                    for audio in metadata.audio:
+                        streaminfo['audio'][audio.id] = None if audio.langcode == 'und' else audio.langcode
+                    for sub in metadata.subtitles:
+                        streaminfo['subtitle'][sub.id] = None if sub.langcode == 'und' else sub.langcode
+            self.send_widget_event('streaminfo', streaminfo)
 
-            # self.obj.set_seek_flags(ClutterGst.SeekFlags(1))
-            # self.obj.connect("eos", self.event_finished)
-            # if self.audio_only:
-            #     # audio element
-            #     if self.visualisation:
-            #         pipeline = self.obj.get_pipeline()
-            #         flags = pipeline.get_property('flags')
-            #         pipeline.set_property('flags', flags | 0x00000008)
 
+    def calculate_geometry(self, secs=0):
+        """
+        Calculate geometry values based on requested geometry and aspect
+        """
+        if not self.aspect:
+            return
+        width, height = self.width * self.zoom, self.height * self.zoom
+        if int(height * self.aspect) > width:
+            height = int(width / self.aspect)
+        else:
+            width = int(height * self.aspect)
+        x = self.x + int(self.width - width) / 2
+        y = self.y + int(self.height - height) / 2
+        self.obj.animatev(clutter.AnimationMode.EASE_IN_QUAD, int(secs * 1000) or 1,
+             ['x', 'y', 'width', 'height'], [x,y,width, height])
 
     #
     # control callbacks from the main process
@@ -130,7 +169,7 @@ class Gstreamer2(widget.Widget):
             return
         self.pipeline.set_state(gst.State.NULL)
         self.pipeline = None
-        self.server.send_event('widget_call', self.wid, 'finished')
+        self.send_widget_event('finished')
 
     @requires_state(gst.State.PLAYING, gst.State.PAUSED)
     def do_pause(self):
@@ -155,18 +194,20 @@ class Gstreamer2(widget.Widget):
         """
         Seek to the given position
         """
-        if not self.pipeline:
-            return
+        # Code broken
+        return
         if type == SEEK_PERCENTAGE:
             pos = value / 100.0
         else:
-            if not self.obj.get_duration():
+            duration = self.pipeline.query_duration(gst.Format.TIME)[1]
+            if not duration:
                 return
+            current = self.pipeline.query_position(gst.Format.TIME)[1]
             if type == SEEK_RELATIVE:
-                pos = self.obj.get_progress() + (1.0 / self.obj.get_duration()) * value
+                newpos = current + value * gst.SECOND
             if type == SEEK_ABSOLUTE:
-                pos = (1.0 / self.obj.get_duration()) * value
-        self.obj.set_progress(min(pos, 1.0))
+                newpos = value * gst.SECOND
+        self.pipeline.seek_simple(gst.Format.TIME, gst.SeekFlags.FLUSH | gst.SeekFlags.KEY_UNIT, newpos)
 
     @requires_state(gst.State.PLAYING)
     def do_set_audio(self, idx):
@@ -184,9 +225,46 @@ class Gstreamer2(widget.Widget):
         """
         pass
 
+    def do_set_aspect(self, aspect):
+        """
+        Set the aspect ratio
+        """
+        if aspect == ASPECT_ORIGINAL:
+            self.zoom = 1
+            self.aspect = self.original_aspect
+        if aspect == ASPECT_16_9:
+            self.zoom = 1
+            self.aspect = 16.0 / 9
+        if aspect == ASPECT_4_3:
+            self.zoom = 1
+            self.aspect = 4.0 / 3
+        if aspect == ASPECT_ZOOM:
+            self.aspect = 4.0 / 3
+            self.zoom = 4.0 / 3
+        self.calculate_geometry(0.2)
+
+    def do_set_deinterlace(self, value):
+        """
+        Turn on/off deinterlacing
+        """
+        pass
+
+    def do_nav_command(self, cmd):
+        """
+        Send DVD navigation command
+        """
+        pass
+
     #
     # events from gstreamer
     #
+
+    def event_size_change(self, texture, base_width, base_height):
+        if self.audio_only and self.visualisation:
+            return
+        self.aspect = self.original_aspect = float(base_width) / base_height
+        self.zoom = 1
+        self.calculate_geometry()
 
     def event_progress(self):
         """
@@ -195,8 +273,8 @@ class Gstreamer2(widget.Widget):
         if not self.pipeline:
             return False
         if self.state in (gst.State.PLAYING, gst.State.PAUSED):
-            pos = float(self.pipeline.query_position(gst.Format.TIME)[2]) / 1000000000
-            self.server.send_event('widget_call', self.wid, 'progress', pos)
+            pos = float(self.pipeline.query_position(gst.Format.TIME)[1]) / 1000000000
+            self.send_widget_event('progress', pos)
             return True
         # FIXME: we should not use the progress signal here and use
         # the correct one for state changes. But I cannot find the
@@ -207,7 +285,7 @@ class Gstreamer2(widget.Widget):
         if not self.state in (gst.State.PLAYING, gst.State.PAUSED) and \
                 state in (gst.State.PLAYING, gst.State.PAUSED):
             caps = self.pipeline.emit('get-video-pad', 0)
-            s = caps.get_negotiated_caps().get_structure(0)
+            s = caps.get_current_caps().get_structure(0)
             width = s.get_int('width')[1]
             height = s.get_int('height')[1]
             # Resize and move the texture to keep the aspect
@@ -244,7 +322,7 @@ class Gstreamer2(widget.Widget):
         """
         Finished event
         """
-        self.do_stop()
+        self.send_widget_event('finished')
 
 # initialize gstreamer
-ClutterGst.init([])
+ClutterGst.init(sys.argv)
