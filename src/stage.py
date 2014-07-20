@@ -162,7 +162,7 @@ class Stage(kaa.Object):
         Callback when the backend disconnects (crash). This means we
         need to restart it.
         """
-        if time.time() - time.time() < 5:
+        if time.time() - self.backend_time < 5:
             log.error('two backend errors in 5 seconds, giving up')
             sys.exit(1)
         log.error('backend error, restarting')
