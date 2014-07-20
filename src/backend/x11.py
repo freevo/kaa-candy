@@ -3,12 +3,16 @@
 # x11.py - X11 helper classes
 # -----------------------------------------------------------------------------
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
-# Copyright (C) 2013 Dirk Meyer
+# Copyright (C) 2014 Dirk Meyer
 #
 # First Version: Dirk Meyer <dischi@freevo.org>
 # Maintainer:    Dirk Meyer <dischi@freevo.org>
 #
-# Based on https://github.com/meehow/python-xrandr
+# The old ctypes code is broken with newer X server. This is a bad
+# hack to make it work again using the xrandr binary. This is not a
+# good solution and should be fixed.
+#
+# Note: Does only work on primary output
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,45 +34,21 @@ __all__ = [ 'xrandr' ]
 
 # Python imports
 import os
-import time
-from ctypes import *
-
-# Load libraries
-rr = cdll.LoadLibrary("libXrandr.so.2")
-xlib = cdll.LoadLibrary("libX11.so.6")
-
-class Display(object):
-    def __init__(self):
-        self.display = xlib.XOpenDisplay(os.getenv("DISPLAY"))
-        self.screen = xlib.XDefaultScreen(self.display)
-        self.root = xlib.XDefaultRootWindow(self.display, self.screen)
+import re
 
 class XrandR(object):
-    class XRRScreenConfiguration(Structure):
-        pass
 
     def __init__(self):
-        self._display = Display()
-        gsi = rr.XRRGetScreenInfo
-        gsi.restype = POINTER(XrandR.XRRScreenConfiguration)
-        self.config = gsi(self._display.display, self._display.root)
-        self._id = rr.XRRRootToScreen(self._display.display, self._display.root)
-        self._size_index = rr.XRRConfigCurrentConfiguration(self.config, byref(c_ushort()))
-        current = c_ushort()
-        rr.XRRConfigRotations(self.config, byref(current))
-        self._rotation = current.value
-        xccr = rr.XRRConfigCurrentRate
-        xccr.restype = c_int
-        self._rate = xccr(self.config)
-
-    def __del__(self):
-        if rr and self.config:
-            rr.XRRFreeScreenConfigInfo(self.config)
-
-    def _get_timestamp(self):
-        config_timestamp = c_ulong()
-        rr.XRRTimes.restpye = c_ulong
-        return rr.XRRTimes(self._display.display, self._id, byref(config_timestamp))
+        self.available_rates = []
+        for line in os.popen("xrandr").readlines():
+            if line.startswith(' ') and line.find("*") > 0:
+                for rate in re.findall(' [0-9\.\*]+', line)[1:]:
+                    intrate = rate[:rate.find('.')].strip(' +*')
+                    if rate.endswith('*'):
+                        self._rate = intrate
+                    self.available_rates.append(intrate)
+                # ignore other outputs
+                break
 
     @property
     def rate(self):
@@ -76,18 +56,12 @@ class XrandR(object):
 
     @rate.setter
     def rate(self, rate):
-        rr.XRRSetScreenConfigAndRate(self._display.display, self.config, self._display.root,
-             self._size_index, self._rotation, rate, self._get_timestamp())
+        os.popen("xrandr -r %s" % rate)
         self._rate = rate
 
-    @property
-    def available_rates(self):
-        rates = []
-        nrates = c_int()
-        rr.XRRConfigRates.restype = POINTER(c_ushort)
-        _rates = rr.XRRConfigRates(self.config, self._size_index, byref(nrates))
-        for r in range(nrates.value):
-            rates.append(_rates[r])
-        return rates
-
 xrandr = XrandR()
+
+# Some test code
+# print xrandr.available_rates
+# print xrandr.rate
+# xrandr.rate = "60"
