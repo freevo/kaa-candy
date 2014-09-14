@@ -194,20 +194,19 @@ class Player(candy.Widget):
         """
         Seek to the given position
         """
-        # Code broken
-        return
-        if type == SEEK_PERCENTAGE:
-            pos = value / 100.0
-        else:
-            duration = self.pipeline.query_duration(gst.Format.TIME)[1]
-            if not duration:
-                return
+        if not self.pipeline:
+            return
+        duration = self.pipeline.query_duration(gst.Format.TIME)[1]
+        if not duration:
+            return
+        if type == SEEK_RELATIVE:
             current = self.pipeline.query_position(gst.Format.TIME)[1]
-            if type == SEEK_RELATIVE:
-                newpos = current + value * gst.SECOND
-            if type == SEEK_ABSOLUTE:
-                newpos = value * gst.SECOND
-        self.pipeline.seek_simple(gst.Format.TIME, gst.SeekFlags.FLUSH | gst.SeekFlags.KEY_UNIT, newpos)
+            pos = current + (value * gst.SECOND)
+        if type == SEEK_ABSOLUTE:
+            pos = value * gst.SECOND
+        if type == SEEK_PERCENTAGE:
+            pos = (duration * value) / 100.0
+        print self.pipeline.seek_simple(gst.Format.TIME, gst.SeekFlags.FLUSH | gst.SeekFlags.KEY_UNIT, pos)
 
     @requires_state(gst.State.PLAYING)
     def do_set_audio(self, idx):
