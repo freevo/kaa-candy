@@ -43,6 +43,8 @@ import gi
 # Clutter and GStreamer GI bindings
 from gi.repository import Clutter as clutter, ClutterGst, Gst as gst, GObject as gobject
 
+GST_PLAY_FLAG_TEXT = (1 << 2)
+
 if ClutterGst.MAJOR_VERSION != 2:
     raise RuntimeError('wrong version')
 
@@ -78,6 +80,7 @@ class Player(candy.Widget):
 
     state = gst.State.NULL
     aspect = original_aspect = None
+    stream_changed = False
     zoom = 1
 
     def create(self):
@@ -115,21 +118,23 @@ class Player(candy.Widget):
             if self.uri.find('://') == -1:
                 self.uri = 'file://' + self.uri
             self.pipeline.set_property("uri", self.uri)
-            streaminfo = {
+            self.streaminfo = {
                 'audio': {},
                 'subtitle': {},
                 'is_menu': False,
-                'sync': True
+                'sync': True,
+                'current-audio': 0,
+                'current-subtitle': -1
             }
             if self.uri.startswith('file://'):
                 metadata = kaa.metadata.parse(self.uri)
                 if metadata and 'audio' in metadata:
                     # video item, not audio only
                     for audio in metadata.audio:
-                        streaminfo['audio'][audio.id] = None if audio.langcode == 'und' else audio.langcode
+                        self.streaminfo['audio'][audio.id] = None if audio.langcode == 'und' else audio.langcode
                     for sub in metadata.subtitles:
-                        streaminfo['subtitle'][sub.id] = None if sub.langcode == 'und' else sub.langcode
-            self.send_widget_event('streaminfo', streaminfo)
+                        self.streaminfo['subtitle'][sub.id] = None if sub.langcode == 'und' else sub.langcode
+            self.send_widget_event('streaminfo', self.streaminfo)
 
 
     def calculate_geometry(self, secs=0):
@@ -159,7 +164,7 @@ class Player(candy.Widget):
         if not self.pipeline:
             return
         self.pipeline.set_state(gst.State.PLAYING)
-        gobject.timeout_add(500, self.event_progress)
+        gobject.timeout_add(200, self.event_progress)
 
     def do_stop(self):
         """
@@ -206,7 +211,7 @@ class Player(candy.Widget):
             pos = value * gst.SECOND
         if type == SEEK_PERCENTAGE:
             pos = (duration * value) / 100.0
-        print self.pipeline.seek_simple(gst.Format.TIME, gst.SeekFlags.FLUSH | gst.SeekFlags.KEY_UNIT, pos)
+        self.pipeline.seek_simple(gst.Format.TIME, gst.SeekFlags.FLUSH | gst.SeekFlags.KEY_UNIT, pos)
 
     @requires_state(gst.State.PLAYING)
     def do_set_audio(self, idx):
@@ -216,13 +221,23 @@ class Player(candy.Widget):
         if not self.pipeline:
             return
         self.pipeline.set_property('current-audio', idx)
+        self.stream_changed = True
 
     @requires_state(gst.State.PLAYING)
     def do_set_subtitle(self, idx):
         """
         Set the subtitle stream (-1 == none)
         """
-        pass
+        if not self.pipeline:
+            return
+        flags = self.pipeline.get_property('flags')
+        if flags == flags | GST_PLAY_FLAG_TEXT and idx == -1:
+            self.pipeline.set_property('flags', flags ^ GST_PLAY_FLAG_TEXT)
+        if flags != flags | GST_PLAY_FLAG_TEXT and idx >= 0:
+            self.pipeline.set_property('flags', flags | GST_PLAY_FLAG_TEXT)
+        if idx >= 0:
+            self.pipeline.set_property('current-text', idx)
+        self.stream_changed = True
 
     def do_set_aspect(self, aspect):
         """
@@ -274,6 +289,14 @@ class Player(candy.Widget):
         if self.state in (gst.State.PLAYING, gst.State.PAUSED):
             pos = float(self.pipeline.query_position(gst.Format.TIME)[1]) / 1000000000
             self.send_widget_event('progress', pos)
+            if self.stream_changed:
+                self.stream_changed = False
+                if self.pipeline.get_property('flags') == self.pipeline.get_property('flags') | GST_PLAY_FLAG_TEXT:
+                    self.streaminfo['current-subtitle'] = self.pipeline.get_property('current-text')
+                else:
+                    self.streaminfo['current-subtitle'] = -1
+                self.streaminfo['current-audio'] = self.pipeline.get_property('current-audio')
+                self.send_widget_event('streaminfo', self.streaminfo)
             return True
         # FIXME: we should not use the progress signal here and use
         # the correct one for state changes. But I cannot find the
@@ -307,6 +330,8 @@ class Player(candy.Widget):
             # Something else that could be interessting in the future:
             # s.get_boolean('interlaced')
             self.obj.show()
+            # turn off subtitles by default
+            self.do_set_subtitle(-1)
         self.state = state
         if not self.delayed:
             return True
