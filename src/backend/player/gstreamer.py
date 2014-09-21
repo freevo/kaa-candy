@@ -32,10 +32,18 @@
 # Python imports
 import os
 import sys
+import logging
 import gi
 
+# get logging object
+log = logging.getLogger('candy')
+
+gi.require_version('Gst', '1.0')
+
 # Clutter and GStreamer GI bindings
-from gi.repository import Clutter as clutter, ClutterGst, Gst as gst, GObject as gobject
+from gi.repository import Clutter as clutter, Gst as gst, GObject as gobject
+
+gst.init([])
 
 GST_PLAY_FLAG_TEXT = (1 << 2)
 
@@ -104,6 +112,10 @@ class Player(candy.Widget):
             sink = gst.ElementFactory.make('cluttersink', 'video')
             sink.set_property('texture', self.obj)
             self.pipeline.set_property('video-sink', sink)
+            # monitor the message bus
+            bus = self.pipeline.get_bus()
+            bus.connect('message', self.event_message)
+            bus.add_signal_watch()
             if self.uri.endswith('/'):
                 self.uri = self.uri[:-1]
             if self.uri.find('://') == -1:
@@ -264,6 +276,22 @@ class Player(candy.Widget):
     # events from gstreamer
     #
 
+    def event_message(self, bus, message):
+        # if message.type == gst.MessageType.STATE_CHANGED:
+        #     print message.parse_state_changed()
+        # elif message.type == gst.MessageType.TAG:
+        #     pass
+        # elif message.type == gst.MessageType.STREAM_START:
+        #     pass
+        # elif message.type == gst.MessageType.STREAM_STATUS:
+        #     print message.parse_stream_status()
+        if message.type == gst.MessageType.ERROR:
+            log.error(str(message.parse_error()[1]))
+            self.do_stop()
+        # else:
+        #     print message.type
+        #     print dir(message)
+
     def event_size_change(self, texture, base_width, base_height):
         if self.audio_only and self.visualisation:
             return
@@ -338,6 +366,3 @@ class Player(candy.Widget):
         Finished event
         """
         self.send_widget_event('finished')
-
-# initialize gstreamer
-ClutterGst.init(sys.argv)
