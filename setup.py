@@ -37,6 +37,43 @@ except ImportError:
     print 'kaa.base not installed'
     sys.exit(1)
 
+print 'checking for gobject-introspection ...',
+try:
+    import gi.repository
+except ImportError:
+    print 'not found'
+    sys.exit(1)
+print 'ok'
+
+# version checks
+def check_version(name, major_version, minor_version=0):
+    print 'checking for gir %s %s.%s ...' % (name, major_version, minor_version),
+    try:
+        exec('from gi.repository import %s as module' % name)
+    except ImportError:
+        print 'not found'
+        sys.exit(1)
+    if hasattr(module, 'MAJOR_VERSION'):
+        if module.MAJOR_VERSION != major_version:
+            print 'failed'
+            print 'wrong major version: %s.%s' % (module.MAJOR_VERSION, module.MINOR_VERSION)
+            sys.exit(1)
+        if module.MINOR_VERSION < minor_version:
+            print 'failed'
+            print 'wrong minor version: %s.%s' % (module.MAJOR_VERSION, module.MINOR_VERSION)
+            sys.exit(1)
+    else:
+        if int(module._version.split('.')[0]) != major_version:
+            print 'failed'
+            print 'wrong major version: %s' % module._version
+            sys.exit(1)
+    print 'ok'
+
+check_version('GObject', 2)
+check_version('Gst', 1)
+check_version('Clutter', 1, 6)
+check_version('ClutterGst', 2)
+
 if len(sys.argv) == 2 and sys.argv[1] == 'clean':
     for file in ('build', 'dist', 'src/version.py', 'MANIFEST',
                  'src/backend/gen_libcandy.c'):
