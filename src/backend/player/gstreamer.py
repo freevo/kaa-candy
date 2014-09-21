@@ -1,18 +1,9 @@
 # -*- coding: iso-8859-1 -*-
 # -----------------------------------------------------------------------------
-# video.py - gstreamer video widget
+# gstreamer.py - Gstreamer based player
 # -----------------------------------------------------------------------------
 # This file is imported by the backend process in the clutter
 # mainloop. Importing and using clutter is thread-safe.
-#
-# Note: THIS PLUGIN IS FOR GSTREAMER 0.10. See gstreamer2.py for the
-# vrsion working with gstreamer 1.0 and clutter-gst-2
-#
-# The widget does not use kaa.popcorn because gstreamer using
-# kaa.candy and mplayer are too different to add support to
-# kaa.popcorn without rewriting too much. Furthermore, kaa.popcorn
-# seems to have a raise condition I cannot find and is too complex;
-# much is not needed.
 #
 # -----------------------------------------------------------------------------
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
@@ -41,19 +32,15 @@
 # Python imports
 import os
 import sys
+import gi
 
 # Clutter and GStreamer GI bindings
-from gi.repository import Clutter as clutter, ClutterGst, Gst as gst
+from gi.repository import Clutter as clutter, ClutterGst, Gst as gst, GObject as gobject
 
-if ClutterGst.MAJOR_VERSION == 2:
-    raise RuntimeError('wrong version')
+GST_PLAY_FLAG_TEXT = (1 << 2)
 
 import kaa.metadata
 import candy
-
-# list of available visualisation plugins
-# (filled with content later)
-factory_visualisation = {}
 
 def requires_state(*states):
     """
@@ -84,6 +71,7 @@ class Player(candy.Widget):
 
     state = gst.State.NULL
     aspect = original_aspect = None
+    stream_changed = False
     zoom = 1
 
     def create(self):
@@ -91,28 +79,8 @@ class Player(candy.Widget):
         Create the clutter object
         """
         self.delayed = []
-        self.obj = ClutterGst.VideoTexture()
-        self.obj.set_seek_flags(ClutterGst.SeekFlags(1))
-        self.obj.connect("notify::progress", self.event_progress)
-        self.obj.connect("eos", self.event_finished)
-        self.obj.connect_after("size-change", self.event_size_change)
-        if self.audio_only:
-            # audio element
-            if self.visualisation:
-                pipeline = self.obj.get_pipeline()
-                flags = pipeline.get_property('flags')
-                pipeline.set_property('flags', flags | 0x00000008)
-
-                # The following lines would set the visualisation
-                # element. But doing so will crash the player with
-                # reference problems. This seems to be a problem with
-                # the gst bindings.
-
-                # factory = factory_visualisation['Synaescope']
-                # plugin = gst.ElementFactory.create(factory, None)
-                # pipeline.set_property('vis-plugin', plugin)
-            else:
-                self.obj.hide()
+        self.obj = clutter.Texture()
+        self.obj.hide()
 
     def update(self, modified):
         """
@@ -125,22 +93,39 @@ class Player(candy.Widget):
                 self.obj.set_height(self.height)
             self.calculate_geometry()
         if 'uri' in modified and self.uri:
-            self.obj.set_uri(self.uri)
-            streaminfo = {
+            self.pipeline = gst.ElementFactory.make('playbin', 'pipeline')
+            # There is a memory problem somehow. If we loose the sink
+            # here gstreamer does not has a ref on its own and it
+            # crashes. If we just keep the ref until the widget is
+            # destroyed, it dies at that point (or later when we
+            # repeat this). Even storing the sink forever crashes
+            # gstreamer with gobject messages at some point. Maybe I'm
+            # doing something wrong here, but I don't think so.
+            sink = gst.ElementFactory.make('cluttersink', 'video')
+            sink.set_property('texture', self.obj)
+            self.pipeline.set_property('video-sink', sink)
+            if self.uri.endswith('/'):
+                self.uri = self.uri[:-1]
+            if self.uri.find('://') == -1:
+                self.uri = 'file://' + self.uri
+            self.pipeline.set_property("uri", self.uri)
+            self.streaminfo = {
                 'audio': {},
                 'subtitle': {},
                 'is_menu': False,
-                'sync': True
+                'sync': True,
+                'current-audio': 0,
+                'current-subtitle': -1
             }
             if self.uri.startswith('file://'):
                 metadata = kaa.metadata.parse(self.uri)
                 if metadata and 'audio' in metadata:
                     # video item, not audio only
                     for audio in metadata.audio:
-                        streaminfo['audio'][audio.id] = None if audio.langcode == 'und' else audio.langcode
+                        self.streaminfo['audio'][audio.id] = None if audio.langcode == 'und' else audio.langcode
                     for sub in metadata.subtitles:
-                        streaminfo['subtitle'][sub.id] = None if sub.langcode == 'und' else sub.langcode
-            self.send_widget_event('streaminfo', streaminfo)
+                        self.streaminfo['subtitle'][sub.id] = None if sub.langcode == 'und' else sub.langcode
+            self.send_widget_event('streaminfo', self.streaminfo)
 
 
     def calculate_geometry(self, secs=0):
@@ -167,14 +152,19 @@ class Player(candy.Widget):
         """
         Start playback
         """
-        self.obj.set_playing(True)
+        if not self.pipeline:
+            return
+        self.pipeline.set_state(gst.State.PLAYING)
+        gobject.timeout_add(200, self.event_progress)
 
     def do_stop(self):
         """
         Stop playback
         """
-        self.obj.set_playing(False)
-        self.obj.set_filename('')
+        if not self.pipeline:
+            return
+        self.pipeline.set_state(gst.State.NULL)
+        self.pipeline = None
         self.send_widget_event('finished')
 
     @requires_state(gst.State.PLAYING, gst.State.PAUSED)
@@ -182,54 +172,63 @@ class Player(candy.Widget):
         """
         Pause playback
         """
-        self.obj.set_playing(False)
+        if not self.pipeline:
+            return
+        self.pipeline.set_state(gst.State.PAUSED)
 
     @requires_state(gst.State.PLAYING, gst.State.PAUSED)
     def do_resume(self):
         """
         Resume playback
         """
-        self.obj.set_playing(True)
-        # Seek nowhere. This is kind of stupid but clutter-gst does
-        # not resume playback unless you seek. This is a bug I have to
-        # check if it is fixed in the latest version and report it if
-        # not.
-        self.do_seek(0, SEEK_RELATIVE)
+        if not self.pipeline:
+            return
+        self.pipeline.set_state(gst.State.PLAYING)
 
     @requires_state(gst.State.PLAYING, gst.State.PAUSED)
     def do_seek(self, value, type):
         """
         Seek to the given position
         """
+        if not self.pipeline:
+            return
+        duration = self.pipeline.query_duration(gst.Format.TIME)[1]
+        if not duration:
+            return
+        if type == SEEK_RELATIVE:
+            current = self.pipeline.query_position(gst.Format.TIME)[1]
+            pos = current + (value * gst.SECOND)
+        if type == SEEK_ABSOLUTE:
+            pos = value * gst.SECOND
         if type == SEEK_PERCENTAGE:
-            pos = value / 100.0
-        else:
-            if not self.obj.get_duration():
-                return
-            if type == SEEK_RELATIVE:
-                pos = self.obj.get_progress() + (1.0 / self.obj.get_duration()) * value
-            if type == SEEK_ABSOLUTE:
-                pos = (1.0 / self.obj.get_duration()) * value
-        self.obj.set_progress(max(min(pos, 1.0), 0))
+            pos = (duration * value) / 100.0
+        self.pipeline.seek_simple(gst.Format.TIME, gst.SeekFlags.FLUSH | gst.SeekFlags.KEY_UNIT, pos)
 
     @requires_state(gst.State.PLAYING)
     def do_set_audio(self, idx):
         """
         Set the audio stream
         """
-        self.obj.set_audio_stream(idx)
-        # Seek nowhere. This is kind of stupid but clutter-gst does
-        # not resume playback unless you seek. This is a bug I have to
-        # check if it is fixed in the latest version and report it if
-        # not.
-        self.do_seek(0, SEEK_RELATIVE)
+        if not self.pipeline:
+            return
+        self.pipeline.set_property('current-audio', idx)
+        self.stream_changed = True
 
     @requires_state(gst.State.PLAYING)
     def do_set_subtitle(self, idx):
         """
         Set the subtitle stream (-1 == none)
         """
-        self.obj.set_subtitle_track(idx)
+        if not self.pipeline:
+            return
+        flags = self.pipeline.get_property('flags')
+        if flags == flags | GST_PLAY_FLAG_TEXT and idx == -1:
+            self.pipeline.set_property('flags', flags ^ GST_PLAY_FLAG_TEXT)
+        if flags != flags | GST_PLAY_FLAG_TEXT and idx >= 0:
+            self.pipeline.set_property('flags', flags | GST_PLAY_FLAG_TEXT)
+        if idx >= 0:
+            self.pipeline.set_property('current-text', idx)
+        self.stream_changed = True
 
     def do_set_aspect(self, aspect):
         """
@@ -272,28 +271,67 @@ class Player(candy.Widget):
         self.zoom = 1
         self.calculate_geometry()
 
-    def event_progress(self, media, pspec):
+    def event_progress(self):
         """
         Progress update
         """
+        if not self.pipeline:
+            return False
         if self.state in (gst.State.PLAYING, gst.State.PAUSED):
-            pos = media.get_progress() * media.get_duration()
+            pos = float(self.pipeline.query_position(gst.Format.TIME)[1]) / 1000000000
             self.send_widget_event('progress', pos)
-            return
+            if self.stream_changed:
+                self.stream_changed = False
+                if self.pipeline.get_property('flags') == self.pipeline.get_property('flags') | GST_PLAY_FLAG_TEXT:
+                    self.streaminfo['current-subtitle'] = self.pipeline.get_property('current-text')
+                else:
+                    self.streaminfo['current-subtitle'] = -1
+                self.streaminfo['current-audio'] = self.pipeline.get_property('current-audio')
+                self.send_widget_event('streaminfo', self.streaminfo)
+            return True
         # FIXME: we should not use the progress signal here and use
         # the correct one for state changes. But I cannot find the
         # signal used for state changes :(
-        state_change_return, state = media.get_pipeline().get_state(0)[:2]
+        state_change_return, state = self.pipeline.get_state(0)[:2]
         if state_change_return != gst.StateChangeReturn.SUCCESS:
-            return
+            return True
+        if not self.state in (gst.State.PLAYING, gst.State.PAUSED) and \
+                state in (gst.State.PLAYING, gst.State.PAUSED):
+            caps = self.pipeline.emit('get-video-pad', 0)
+            s = caps.get_current_caps().get_structure(0)
+            width = s.get_int('width')[1]
+            height = s.get_int('height')[1]
+            # Resize and move the texture to keep the aspect
+            # ratio. This is kind of ugly because when the application
+            # changes it this calculation won't happen again. And I
+            # guess we should also connect to cap changes to redo this
+            # calculations. Besides that, it should be possible to
+            # change the aspect ratio during playback time,
+            # e.g. ignore it and zoom.
+            a1, a2 = s.get_fraction('pixel-aspect-ratio')[1:]
+            aspect = (float(width) / height) * (float(a1) / a2)
+            if int(self.height * aspect) > self.width:
+                height = int(self.width / aspect)
+                self.obj.set_y(self.y + int(self.height - height) / 2)
+                self.obj.set_height(height)
+            else:
+                width = int(self.height * aspect)
+                self.obj.set_x(self.x + int(self.width - width) / 2)
+                self.obj.set_width(width)
+            # Something else that could be interessting in the future:
+            # s.get_boolean('interlaced')
+            self.obj.show()
+            # turn off subtitles by default
+            self.do_set_subtitle(-1)
         self.state = state
         if not self.delayed:
-            return
+            return True
         for delayed in self.delayed[:]:
             if self.state in delayed[0]:
                 func, args, kwargs = delayed[1:]
                 func(self, *args, **kwargs)
                 self.delayed.remove(delayed)
+        return True
 
     def event_finished(self, media):
         """
@@ -303,15 +341,3 @@ class Player(candy.Widget):
 
 # initialize gstreamer
 ClutterGst.init(sys.argv)
-
-def parse_registry(element, data):
-    """
-    Callback for registry parsing
-    """
-    if hasattr(element, 'get_klass') and element.get_klass() == 'Visualization':
-        factory_visualisation[element.get_longname()] = element
-        return True
-    return False
-
-# parse the registry
-gst.Registry.feature_filter(gst.Registry.get_default(), parse_registry, False, None)

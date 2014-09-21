@@ -43,15 +43,11 @@ log = logging.getLogger('candy')
 
 for name, module in kaa.utils.get_plugins(location=__file__).items():
     if not hasattr(module, 'Player'):
-        if str(module) != 'wrong version':
-            # This should never happen and is for developing inside
-            # kaa.candy only. Still, we should use the logging module
-            # somehow and get the logging info to the main process.
-            log.error('disable player %s: %s' % (name, module))
+        # This should never happen and is for developing inside
+        # kaa.candy only. Still, we should use the logging module
+        # somehow and get the logging info to the main process.
+        log.error('disable player %s: %s' % (name, module))
         continue
-    if name.startswith('gstreamer'):
-        log.info('using %s as gstreamer plugin' % name)
-        name = 'gstreamer'
     candy.player[name] = getattr(module, 'Player')
 
 def init(server):
