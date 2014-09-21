@@ -39,6 +39,7 @@ except ImportError:
 
 print 'checking for gobject-introspection ...',
 try:
+    import gi
     import gi.repository
 except ImportError:
     print 'not found'
@@ -46,15 +47,17 @@ except ImportError:
 print 'ok'
 
 # version checks
-def check_version(name, major_version, minor_version=0):
-    print 'checking for gir %s %s.%s ...' % (name, major_version, minor_version),
+def check_version(name, version, major_version=0, minor_version=0):
+    print 'checking for gir %s %s ...' % (name, version),
     try:
-        exec('from gi.repository import %s as module' % name)
-    except ImportError:
+        gi.require_version(name, version)
+    except ValueError, e:
         print 'not found'
+        print e
         sys.exit(1)
+    exec('from gi.repository import %s as module' % name)
     if hasattr(module, 'MAJOR_VERSION'):
-        if module.MAJOR_VERSION != major_version:
+        if major_version and module.MAJOR_VERSION != major_version:
             print 'failed'
             print 'wrong major version: %s.%s' % (module.MAJOR_VERSION, module.MINOR_VERSION)
             sys.exit(1)
@@ -63,16 +66,16 @@ def check_version(name, major_version, minor_version=0):
             print 'wrong minor version: %s.%s' % (module.MAJOR_VERSION, module.MINOR_VERSION)
             sys.exit(1)
     else:
-        if int(module._version.split('.')[0]) != major_version:
+        if major_version and int(module._version.split('.')[0]) != major_version:
             print 'failed'
             print 'wrong major version: %s' % module._version
             sys.exit(1)
     print 'ok'
 
-check_version('GObject', 2)
-check_version('Gst', 1)
-check_version('Clutter', 1, 6)
-check_version('ClutterGst', 2)
+check_version('GObject', '2.0')
+check_version('Gst', '1.0')
+check_version('Clutter', '1.0', 1, 12)
+check_version('ClutterGst', '2.0')
 
 if len(sys.argv) == 2 and sys.argv[1] == 'clean':
     for file in ('build', 'dist', 'src/version.py', 'MANIFEST',
