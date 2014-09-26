@@ -214,7 +214,7 @@ class Player(candy.Widget):
             pos = value * gst.SECOND
         if type == SEEK_PERCENTAGE:
             pos = (duration * value) / 100.0
-        self.pipeline.seek_simple(gst.Format.TIME, gst.SeekFlags.FLUSH | gst.SeekFlags.KEY_UNIT, pos)
+        self.pipeline.seek_simple(gst.Format.TIME, gst.SeekFlags.FLUSH | gst.SeekFlags.KEY_UNIT, min(pos, duration))
 
     @requires_state(gst.State.PLAYING)
     def do_set_audio(self, idx):
@@ -277,54 +277,42 @@ class Player(candy.Widget):
     #
 
     def event_message(self, bus, message):
-        # if message.type == gst.MessageType.STATE_CHANGED:
-        #     print message.parse_state_changed()
-        # elif message.type == gst.MessageType.TAG:
-        #     pass
-        # elif message.type == gst.MessageType.STREAM_START:
-        #     pass
-        # elif message.type == gst.MessageType.STREAM_STATUS:
-        #     print message.parse_stream_status()
-        if message.type == gst.MessageType.ERROR:
+        """
+        Events from GStreamer
+        """
+        if message.type == gst.MessageType.STATE_CHANGED:
+            state = message.parse_state_changed()
+            if self.state in (gst.State.PLAYING, gst.State.PAUSED):
+                # toggle between play/pause
+                state = state[1]
+            elif state[1] in (gst.State.PLAYING, gst.State.PAUSED):
+                # initial stream start
+                state_change_return, state = self.pipeline.get_state(0)[:2]
+                if state_change_return != gst.StateChangeReturn.SUCCESS:
+                    # invalid state
+                    return
+            else:
+                # invalid state
+                return
+            if self.state != state:
+                previous, self.state = self.state, state
+                self.event_state_change(previous, state)
+        elif message.type == gst.MessageType.ERROR:
             log.error(str(message.parse_error()[1]))
             self.do_stop()
-        # else:
-        #     print message.type
-        #     print dir(message)
+        elif message.type == gst.MessageType.EOS:
+            self.send_widget_event('finished')
 
-    def event_size_change(self, texture, base_width, base_height):
-        if self.audio_only and self.visualisation:
-            return
-        self.aspect = self.original_aspect = float(base_width) / base_height
-        self.zoom = 1
-        self.calculate_geometry()
-
-    def event_progress(self):
+    def event_state_change(self, previous, state):
         """
-        Progress update
+        Gstreamer state change
         """
-        if not self.pipeline:
-            return False
-        if self.state in (gst.State.PLAYING, gst.State.PAUSED):
-            pos = float(self.pipeline.query_position(gst.Format.TIME)[1]) / 1000000000
-            self.send_widget_event('progress', pos)
-            if self.stream_changed:
-                self.stream_changed = False
-                if self.pipeline.get_property('flags') == self.pipeline.get_property('flags') | GST_PLAY_FLAG_TEXT:
-                    self.streaminfo['current-subtitle'] = self.pipeline.get_property('current-text')
-                else:
-                    self.streaminfo['current-subtitle'] = -1
-                self.streaminfo['current-audio'] = self.pipeline.get_property('current-audio')
-                self.send_widget_event('streaminfo', self.streaminfo)
-            return True
-        # FIXME: we should not use the progress signal here and use
-        # the correct one for state changes. But I cannot find the
-        # signal used for state changes :(
-        state_change_return, state = self.pipeline.get_state(0)[:2]
-        if state_change_return != gst.StateChangeReturn.SUCCESS:
-            return True
-        if not self.state in (gst.State.PLAYING, gst.State.PAUSED) and \
-                state in (gst.State.PLAYING, gst.State.PAUSED):
+        for delayed in self.delayed[:]:
+            if self.state in delayed[0]:
+                func, args, kwargs = delayed[1:]
+                func(self, *args, **kwargs)
+                self.delayed.remove(delayed)
+        if previous == gst.State.NULL:
             caps = self.pipeline.emit('get-video-pad', 0)
             s = caps.get_current_caps().get_structure(0)
             width = s.get_int('width')[1]
@@ -351,18 +339,33 @@ class Player(candy.Widget):
             self.obj.show()
             # turn off subtitles by default
             self.do_set_subtitle(-1)
-        self.state = state
-        if not self.delayed:
-            return True
-        for delayed in self.delayed[:]:
-            if self.state in delayed[0]:
-                func, args, kwargs = delayed[1:]
-                func(self, *args, **kwargs)
-                self.delayed.remove(delayed)
-        return True
 
-    def event_finished(self, media):
+    def event_size_change(self, texture, base_width, base_height):
         """
-        Finished event
+        Video size change
         """
-        self.send_widget_event('finished')
+        if self.audio_only and self.visualisation:
+            return
+        self.aspect = self.original_aspect = float(base_width) / base_height
+        self.zoom = 1
+        self.calculate_geometry()
+
+    def event_progress(self):
+        """
+        Progress update
+        """
+        if not self.pipeline:
+            return False
+        if not self.state in (gst.State.PLAYING, gst.State.PAUSED):
+            return True
+        pos = float(self.pipeline.query_position(gst.Format.TIME)[1]) / 1000000000
+        self.send_widget_event('progress', pos)
+        if self.stream_changed:
+            self.stream_changed = False
+            if self.pipeline.get_property('flags') == self.pipeline.get_property('flags') | GST_PLAY_FLAG_TEXT:
+                self.streaminfo['current-subtitle'] = self.pipeline.get_property('current-text')
+            else:
+                self.streaminfo['current-subtitle'] = -1
+            self.streaminfo['current-audio'] = self.pipeline.get_property('current-audio')
+            self.send_widget_event('streaminfo', self.streaminfo)
+        return True
