@@ -49,9 +49,6 @@ import candyxml
 # get logging object
 log = logging.getLogger('kaa.candy')
 
-# available refresh rates
-REFRESH_RATES = []
-
 # turn on internal debug
 DEBUG = False
 
@@ -103,7 +100,6 @@ class Stage(kaa.Object):
 
     def __init__(self, size, name, logfile=''):
         super(Stage, self).__init__()
-        self.available_rates = []
         self.name = 'candy-backend-%s' % name
         self.logfile = logfile
         self.size = size
@@ -414,14 +410,6 @@ class Stage(kaa.Object):
         """
         for p in player:
             POSSIBLE_PLAYER.append(p)
-
-    @kaa.rpc.expose()
-    def event_available_rates(self, available_rates):
-        """
-        Callback on init to list all available refresh rates
-        """
-        for a in available_rates:
-            REFRESH_RATES.append(a)
 
     def candyxml(self, data):
         """
