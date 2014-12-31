@@ -56,7 +56,7 @@ class Text(Widget):
     __text_regexp = re.compile('\$([a-zA-Z][a-zA-Z0-9_\.]*)|\${([^}]*)}')
     __text = None
 
-    def __init__(self, pos, size, text, font, color, align=None, context=None):
+    def __init__(self, pos, size, text, font, color, align=None, condition=None, context=None):
         """
         Create Text widget. Unlike a Label a Text widget supports multi-line
         text and markup. See the pango markup documentation.
@@ -69,6 +69,7 @@ class Text(Widget):
         @param context: the context the widget is created in
         """
         super(Text, self).__init__(pos, size, context)
+        self._condition = condition
         self.align = align or Widget.ALIGN_LEFT
         self.font = font
         self.text = text
@@ -89,6 +90,8 @@ class Text(Widget):
             return ''
         if self.context:
             # we have a context, use it
+            if self._condition and not self.context.get(self._condition):
+                text = ' '      # why does '' not work on update?
             text = re.sub(self.__text_regexp, replace_context, text)
         if self.__text == text:
             return
@@ -134,4 +137,4 @@ class Text(Widget):
         """
         return super(Text, cls).candyxml_parse(element).update(
             text=element.content, align=element.align, color=element.color,
-            font=element.font)
+            font=element.font, condition=element.condition)
