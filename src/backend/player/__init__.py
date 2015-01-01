@@ -41,6 +41,10 @@ log = logging.getLogger('candy')
 
 for name, module in kaa.utils.get_plugins(location=__file__).items():
     if not hasattr(module, 'Player'):
+        if str(module) == 'KAA_CANDY_SKIP':
+            # player we expect to fail for now
+            log.info('disable player %s' % name)
+            continue
         # This should never happen and is for developing inside
         # kaa.candy only. Still, we should use the logging module
         # somehow and get the logging info to the main process.

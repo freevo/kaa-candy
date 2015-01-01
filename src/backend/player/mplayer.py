@@ -44,11 +44,14 @@ import re
 import subprocess
 import logging
 
-# Clutter GI bindings
-from gi.repository import Clutter as clutter, ClutterX11
+try:
+    # Clutter GI bindings
+    from gi.repository import Clutter as clutter, ClutterX11
 
-# kaa.display for mplayer to draw to
-import kaa.display
+    # kaa.display for mplayer to draw to
+    import kaa.display
+except ImportError:
+    raise ImportError('KAA_CANDY_SKIP')
 
 # kaa.candy backend code
 import candy
