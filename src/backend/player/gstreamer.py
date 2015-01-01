@@ -46,9 +46,12 @@ from gi.repository import Clutter as clutter, Gst as gst, GObject as gobject
 gst.init([])
 
 GST_PLAY_FLAG_TEXT = (1 << 2)
+GST_PLAY_FLAG_VIS  = (1 << 3)
 
 import kaa.metadata
 import candy
+
+visualization_plugin = False
 
 def requires_state(*states):
     """
@@ -81,6 +84,7 @@ class Player(candy.Widget):
     aspect = original_aspect = None
     stream_changed = False
     zoom = 1
+    visualization = None
 
     def create(self):
         """
@@ -112,6 +116,9 @@ class Player(candy.Widget):
             sink = gst.ElementFactory.make('cluttersink', 'video')
             sink.set_property('texture', self.obj)
             self.pipeline.set_property('video-sink', sink)
+            if visualization_plugin:
+                flags = self.pipeline.get_property('flags')
+                self.pipeline.set_property('flags', flags | GST_PLAY_FLAG_VIS)
             # monitor the message bus
             bus = self.pipeline.get_bus()
             bus.connect('message', self.event_message)
@@ -314,6 +321,11 @@ class Player(candy.Widget):
                 self.delayed.remove(delayed)
         if previous == gst.State.NULL:
             caps = self.pipeline.emit('get-video-pad', 0)
+            if not caps:
+                # no video
+                if visualization_plugin:
+                    self.obj.show()
+                return
             s = caps.get_current_caps().get_structure(0)
             width = s.get_int('width')[1]
             height = s.get_int('height')[1]
@@ -340,16 +352,6 @@ class Player(candy.Widget):
             # turn off subtitles by default
             self.do_set_subtitle(-1)
 
-    def event_size_change(self, texture, base_width, base_height):
-        """
-        Video size change
-        """
-        if self.audio_only and self.visualisation:
-            return
-        self.aspect = self.original_aspect = float(base_width) / base_height
-        self.zoom = 1
-        self.calculate_geometry()
-
     def event_progress(self):
         """
         Progress update
@@ -369,3 +371,15 @@ class Player(candy.Widget):
             self.streaminfo['current-audio'] = self.pipeline.get_property('current-audio')
             self.send_widget_event('streaminfo', self.streaminfo)
         return True
+
+def filter_vis_features(feature, data):
+    """
+    Get Visualization filter
+    """
+    if hasattr(feature, 'get_klass') and feature.get_klass() == 'Visualization':
+        return True
+    return False
+
+if gst.Registry.feature_filter(gst.Registry.get(), filter_vis_features, False, None):
+    # FIXME: make it possible to select a plugin
+    visualization_plugin = True
