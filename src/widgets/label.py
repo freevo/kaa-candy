@@ -53,7 +53,7 @@ class Label(Widget):
     __text_regexp = re.compile('\$([a-zA-Z][a-zA-Z0-9_\.]*)|\${([^}]*)}')
     __text = None
 
-    def __init__(self, pos=None, size=None, color=None, font=None, text='', context=None):
+    def __init__(self, pos=None, size=None, color=None, font=None, text='', condition=None, context=None):
         """
         Create a new label widget
 
@@ -66,6 +66,7 @@ class Label(Widget):
         @param context: the context the widget is created in
         """
         super(Label, self).__init__(pos, size, context)
+        self._condition = condition
         self.color = color
         self.font = font
         self.text = text
@@ -84,6 +85,8 @@ class Label(Widget):
                 return kaa.base.py3_str(s, coerce=True)
             return ''
         if self.context:
+            if self._condition and not self.context.get(self._condition):
+                text = ''
             # we have a context, use it
             text = re.sub(self.__text_regexp, replace_context, text)
         if self.__text == text:
@@ -122,4 +125,5 @@ class Label(Widget):
         will make the widget context sensitive.
         """
         return super(Label, cls).candyxml_parse(element).update(
-            font=element.font, color=element.color, text=element.content)
+            font=element.font, color=element.color, text=element.content,
+            condition=element.condition)
