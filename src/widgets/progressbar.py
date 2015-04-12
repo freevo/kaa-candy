@@ -30,9 +30,6 @@
 
 __all__ = [ 'Progressbar' ]
 
-# kaa imports
-from kaa.utils import property
-
 # kaa.candy imports
 from .. import is_template
 from rectangle import Rectangle
