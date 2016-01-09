@@ -70,10 +70,12 @@ class Stage(object):
     def ensure_redraw(self):
         self.obj.ensure_redraw()
 
-    def init(self, size):
+    def init(self, size, fullscreen):
         """
         Set the size and the base group
         """
         self.obj.set_size(*size)
+        if fullscreen:
+            self.obj.set_fullscreen(True)
         self.obj.set_color(clutter.Color.new(0, 0, 0, 0xff))
         self.obj.show()

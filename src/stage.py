@@ -98,12 +98,13 @@ class Stage(kaa.Object):
 
     active = True
 
-    def __init__(self, size, name, logfile=''):
+    def __init__(self, size, name, logfile='', fullscreen=False):
         super(Stage, self).__init__()
         self.name = 'candy-backend-%s' % name
         self.logfile = logfile
         self.size = size
         self.scale = None
+        self.fullscreen = fullscreen
         self.backend_state = Stage.BACKEND_DOWN
         self.backend_time = 0
         # import cache for restart
@@ -317,7 +318,7 @@ class Stage(kaa.Object):
         if self.backend_state == Stage.BACKEND_INITIALIZING:
             self.backend_state = Stage.BACKEND_RUNNING
             tasks.append(('add', ('stage.Stage', -1)))
-            tasks.append(('call', (-1, 'init', (self.size, ))))
+            tasks.append(('call', (-1, 'init', (self.size, self.fullscreen))))
         # Change parents for the widgets. Remember the needed calls in
         # a seperate variable. We need to reparent before updaing
         # everything here, but maybe do it later on the backend.
