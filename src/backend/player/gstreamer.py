@@ -308,7 +308,7 @@ class Player(candy.Widget):
             log.error(str(message.parse_error()[1]))
             self.do_stop()
         elif message.type == gst.MessageType.EOS:
-            self.send_widget_event('finished')
+            self.do_stop()
 
     def event_state_change(self, previous, state):
         """
