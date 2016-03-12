@@ -31,6 +31,8 @@
 
 from gi.repository import Clutter as clutter
 
+modifier_names = 'Shift', 'Super', 'Control', 'Alt'
+
 class Stage(object):
 
     def create(self):
@@ -39,8 +41,12 @@ class Stage(object):
         """
         self.obj = clutter.Stage.get_default()
         self.obj.hide_cursor()
-        self.obj.connect('key-press-event', self.handle_key)
+        self.obj.connect('key-press-event', self.handle_key_press)
+        self.obj.connect('key-release-event', self.handle_key_release)
         self.keysyms = {}
+        self.active_modifier = {}
+        for modifier in modifier_names:
+            self.active_modifier[modifier] = False
         for name in dir(clutter):
             if name.startswith('KEY_'):
                 if not getattr(clutter, name) in self.keysyms:
@@ -59,13 +65,31 @@ class Stage(object):
             child.set_opacity(child.get_opacity() * factor)
             child.restore_easing_state()
 
-    def handle_key(self, stage, event):
+    def handle_key_press(self, stage, event):
         """
         Translate clutter keycode to name and emit signal in main loop. This
         function is a callback from clutter.
         """
         for key in self.keysyms.get(event.keyval, []):
-            self.server.send_event('key-press', key)
+            for modifier in modifier_names:
+                if key.startswith(modifier):
+                    self.active_modifier[modifier] = True
+                    break
+            else:
+                for modifier in reversed(modifier_names):
+                    if self.active_modifier[modifier] and \
+                       not (modifier == 'Shift' and len(key) == 1):
+                        key = '%s_%s' % (modifier, key)
+                self.server.send_event('key-press', key)
+
+    def handle_key_release(self, stage, event):
+        """
+        Handle release of shift/ctrl/alt/etc.
+        """
+        for key in self.keysyms.get(event.keyval, []):
+            for modifier in modifier_names:
+                if key.startswith(modifier):
+                    self.active_modifier[modifier] = False
 
     def ensure_redraw(self):
         self.obj.ensure_redraw()
