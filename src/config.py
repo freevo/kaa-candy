@@ -9,8 +9,8 @@
 # kaa-candy - Fourth generation Canvas System using Clutter as backend
 # Copyright (C) 2011 Dirk Meyer
 #
-# First Version: Dirk Meyer <dischi@freevo.org>
-# Maintainer:    Dirk Meyer <dischi@freevo.org>
+# First Version: Dirk Meyer <https://github.com/Dischi>
+# Maintainer:    Dirk Meyer <https://github.com/Dischi>
 #
 # Based on various previous attempts to create a canvas system for
 # Freevo by Dirk Meyer and Jason Tackaberry.  Please see the file
